@@ -1,0 +1,14 @@
+node_modules
+venv
+.git
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+backend/chroma/chroma_data
+backend/corpus/bm25_indexes
+frontend/dist
+frontend/node_modules
+*.log
+.env
+.DS_Store

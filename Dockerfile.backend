@@ -1,0 +1,39 @@
+# DivinityAI Backend — Django 5.2 + Python 3.11
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir \
+    django==5.2.15 \
+    djangorestframework==3.17.1 \
+    chromadb \
+    langchain-openai \
+    rank_bm25 \
+    rapidfuzz \
+    requests \
+    huggingface_hub \
+    python-dotenv \
+    gunicorn \
+    uvicorn
+
+# Copy backend code
+COPY backend/ /app/backend/
+
+
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+# Run with gunicorn in production, runserver in dev
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -1,0 +1,88 @@
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+*.egg
+*.so
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env.local
+.env.*.local
+*.venv/
+
+# Django
+backend/db.sqlite3
+backend/**/migrations/__pycache__/
+*.log
+backend/staticfiles/
+backend/media/
+
+# ChromaDB local data
+backend/chroma/chroma_data/
+
+# BM25 indexes
+backend/corpus/bm25_indexes/
+
+# pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# =============================================================================
+# Node / Frontend
+# =============================================================================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+
+# =============================================================================
+# Environment files
+# =============================================================================
+.env
+.env.local
+.env.*.local
+
+# =============================================================================
+# IDE / Editor
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =============================================================================
+# Docker
+# =============================================================================
+docker-compose.override.yml
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.bak
+*.tmp
+*.temp
+tmp/
+temp/

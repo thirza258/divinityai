@@ -1,0 +1,1 @@
+# qa Django app

@@ -1,0 +1,93 @@
+# DivinityAI — Islamic Grounded RAG (Quran & Hadith QA)
+# =============================================================================
+#
+# Services:
+#   backend   — Django 5.2 API              → host:8899
+#   frontend  — Vite + React dev server      → host:5899
+#   nginx     — Reverse proxy (optional)     → host:80
+#
+# External dependencies (run on host):
+#   Ollama     — Embedding API               → host.docker.internal:11434
+#   ChromaDB   — Vector database             → host.docker.internal:8040
+#
+# Usage:
+#   docker compose up -d
+#   docker compose down
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — Django REST API
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: divinityai-backend
+    ports:
+      - "8899:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me}
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,nginx
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_DEFAULT_MODEL=${OPENROUTER_DEFAULT_MODEL:-google/gemini-2.5-flash}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-embeddinggemma}
+      - CHROMA_CLIENT_SERVER_MODE=True
+      - CHROMA_HOST=${CHROMA_HOST:-host.docker.internal}
+      - CHROMA_PORT=${CHROMA_PORT:-8040}
+      - QURAN_COLLECTION=${QURAN_COLLECTION:-quran_collection}
+      - HADITH_COLLECTION=${HADITH_COLLECTION:-hadith_collection}
+      - RAG_PHASE=${RAG_PHASE:-2}
+      - BM25_INDEX_DIR=/app/backend/corpus/bm25_indexes
+      - OPENROUTER_GENERATION_MODEL=${OPENROUTER_GENERATION_MODEL:-google/gemini-2.5-flash}
+      - OPENROUTER_CLASSIFIER_MODEL=${OPENROUTER_CLASSIFIER_MODEL:-google/gemini-2.5-flash}
+      - OPENROUTER_EVIDENCE_CHECK_MODEL=${OPENROUTER_EVIDENCE_CHECK_MODEL:-meta-llama/llama-3.3-70b-instruct}
+      - OPENROUTER_HALLUCINATION_MODEL=${OPENROUTER_HALLUCINATION_MODEL:-meta-llama/llama-3.3-70b-instruct}
+    volumes:
+      - ./backend:/app/backend
+      - bm25_data:/app/backend/corpus/bm25_indexes
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Vite + React Dev Server
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: divinityai-frontend
+    ports:
+      - "5899:5173"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8899}
+      - VITE_APP_TITLE=${VITE_APP_TITLE:-DivinityAI}
+      - VITE_APP_SUBTITLE=${VITE_APP_SUBTITLE:-Quran & Hadith QA}
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.js:/app/vite.config.js
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Nginx — Reverse Proxy (optional, uncomment to use)
+  # ---------------------------------------------------------------------------
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: divinityai-nginx
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #   depends_on:
+  #     - backend
+  #     - frontend
+
+volumes:
+  bm25_data:
