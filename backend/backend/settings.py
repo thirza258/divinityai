@@ -70,7 +70,7 @@ for candidate in (PROJECT_ROOT / ".env", BASE_DIR / ".env"):
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
-    "django-insecure-3y_udy!h@ly%!!@sl9w9bdtwrj#-zd62^o^-br4k#z7(d!-8wj",
+    "my_secret_key_change_me_in_production",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -88,6 +88,7 @@ CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS")
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -103,6 +104,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -218,11 +220,25 @@ OPENROUTER_HALLUCINATION_MODEL = os.getenv(
     "meta-llama/llama-3.3-70b-instruct",
 )
 
-# DashScope (Alibaba Cloud) — Stage 1 of the two-stage pipeline
-DASHSCOPE_STAGE_MODEL = os.getenv(
-    "DASHSCOPE_STAGE_MODEL",
-    "deepseek-flash",
-)
-
 # BM25 index directory (relative to BASE_DIR or absolute)
 BM25_INDEX_DIR = os.getenv("BM25_INDEX_DIR", str(BASE_DIR / "corpus" / "bm25_indexes"))
+
+
+# =============================================================================
+# CORS — Cross-Origin Resource Sharing
+# =============================================================================
+# In production nginx proxies both frontend and backend from the same origin,
+# so CORS is not needed. In development, the frontend dev server may be on a
+# different origin (e.g. divi.nevatal.tech) and needs to call the backend API.
+
+CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS") or [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5899",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5899",
+    "https://divi.nevatal.tech",
+    "http://divi.nevatal.tech",
+]
+
+CORS_ALLOW_CREDENTIALS = True

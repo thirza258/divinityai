@@ -6,7 +6,6 @@ from django.test import TestCase
 
 from generation.llm_service import (
     generate,
-    generate_dashscope,
     generate_with_history,
     get_cached_llm,
     get_llm,
@@ -250,52 +249,3 @@ class GenerateWithHistoryTests(TestCase):
         mock_llm.stream.assert_called_once()
 
 
-# =========================================================================
-# Unit tests: generate_dashscope
-# =========================================================================
-
-class GenerateDashscopeTests(TestCase):
-    """Test generate_dashscope() Stage 1 pipeline wrapper."""
-
-    @patch('generation.llm_service.generate')
-    def test_generate_dashscope_delegates_to_generate(self, mock_generate):
-        mock_generate.return_value = "Dashscope response"
-
-        result = generate_dashscope(prompt="Classify this query")
-        self.assertEqual(result, "Dashscope response")
-
-        mock_generate.assert_called_once()
-        call_kwargs = mock_generate.call_args.kwargs
-        # Should use dashscope defaults
-        self.assertEqual(call_kwargs['prompt'], 'Classify this query')
-
-    @patch('generation.llm_service.generate')
-    def test_generate_dashscope_with_model_override(self, mock_generate):
-        mock_generate.return_value = "Response"
-
-        generate_dashscope(prompt="test", model="custom-model")
-        call_kwargs = mock_generate.call_args.kwargs
-        self.assertEqual(call_kwargs['model'], 'custom-model')
-
-    @patch('generation.llm_service.generate')
-    def test_generate_dashscope_with_system(self, mock_generate):
-        mock_generate.return_value = "Response"
-
-        generate_dashscope(
-            prompt="test",
-            system="You are a classifier.",
-            temperature=0.1,
-        )
-        call_kwargs = mock_generate.call_args.kwargs
-        self.assertEqual(call_kwargs['system'], 'You are a classifier.')
-        self.assertEqual(call_kwargs['temperature'], 0.1)
-
-    @patch('generation.llm_service.generate')
-    def test_generate_dashscope_streaming(self, mock_generate):
-        mock_stream = MagicMock()
-        mock_generate.return_value = mock_stream
-
-        result = generate_dashscope(prompt="test", stream=True)
-        self.assertEqual(result, mock_stream)
-        call_kwargs = mock_generate.call_args.kwargs
-        self.assertTrue(call_kwargs['stream'])

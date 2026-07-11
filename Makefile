@@ -2,29 +2,17 @@
 # =============================================================================
 #
 # Usage:
-#   make up                    # Start in development mode (default)
-#   DEVELOPMENT_MODE=false make up  # Start in production mode
-#   make down                  # Stop all services
-#   make help                  # Show all available commands
+#   make up       # Start all services
+#   make down     # Stop all services
+#   make help     # Show all available commands
 #
 # =============================================================================
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DEVELOPMENT_MODE ?= true
 DOCKER_COMPOSE := docker compose
-COMPOSE_FILE_DEV := docker-compose.yml
-COMPOSE_FILE_PROD := docker-compose.yml:docker-compose.prod.yml
-
-ifeq ($(DEVELOPMENT_MODE),true)
-	COMPOSE_FILES := $(subst :, -f ,$(COMPOSE_FILE_DEV))
-	MODE_LABEL := 🔧 development
-else
-	COMPOSE_FILES := $(subst :, -f ,$(COMPOSE_FILE_PROD))
-	MODE_LABEL := 🚀 production
-endif
-
-COMPOSE := $(DOCKER_COMPOSE) $(COMPOSE_FILES)
+COMPOSE_FILE := docker-compose.yml
+COMPOSE := $(DOCKER_COMPOSE) -f $(COMPOSE_FILE)
 ENV_FILE := .env
 ENV_EXAMPLE := .env.example
 
@@ -34,10 +22,8 @@ ENV_EXAMPLE := .env.example
 help: ## Show this help
 	@echo "DivinityAI — Makefile"
 	@echo ""
-	@echo "Current mode: DEVELOPMENT_MODE=$(DEVELOPMENT_MODE)  $(MODE_LABEL)"
-	@echo ""
 	@echo "Usage:"
-	@echo "  make [target] [DEVELOPMENT_MODE=true|false]"
+	@echo "  make [target]"
 	@echo ""
 	@echo "Core:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -58,21 +44,21 @@ setup-env: $(ENV_FILE) ## Create .env from .env.example if missing
 
 .PHONY: build
 build: setup-env ## Build Docker images
-	@echo "🔨 Building images — $(MODE_LABEL)"
+	@echo "🔨 Building images..."
 	$(COMPOSE) build
 
 .PHONY: build-no-cache
 build-no-cache: setup-env ## Build images without cache
-	@echo "🔨 Building images from scratch — $(MODE_LABEL)"
+	@echo "🔨 Building images from scratch..."
 	$(COMPOSE) build --no-cache
 
 # ── Start / Stop ──────────────────────────────────────────────────────────────
 
 .PHONY: up
 up: setup-env ## Start all services (detached)
-	@echo "🆙 Starting services — $(MODE_LABEL)"
+	@echo "🆙 Starting services..."
 	$(COMPOSE) up -d
-	@echo "✅ Done. Run 'make logs' to tail logs, 'make ps' to see status."
+	@echo "✅ Done. App → http://localhost:5899 | API → http://localhost:8899"
 
 .PHONY: down
 down: ## Stop all services and remove containers
@@ -86,7 +72,7 @@ down-volumes: ## Stop all services and remove volumes (destructive)
 
 .PHONY: restart
 restart: ## Restart all services
-	@echo "🔄 Restarting services — $(MODE_LABEL)"
+	@echo "🔄 Restarting services..."
 	$(COMPOSE) restart
 
 .PHONY: ps
@@ -194,19 +180,10 @@ prune: ## Remove unused Docker data (system-wide)
 
 .PHONY: info
 info: ## Show project info and URLs
-	@echo "DivinityAI — $(MODE_LABEL)"
+	@echo "DivinityAI"
 	@echo ""
-	@echo "Development mode: $(DEVELOPMENT_MODE)"
-	@echo "Compose files:    $(COMPOSE_FILES)"
-	@echo ""
-	@echo "URLs:"
-ifeq ($(DEVELOPMENT_MODE),true)
+	@echo "  App (nginx):    http://localhost:5899"
 	@echo "  Backend API:    http://localhost:8899"
-	@echo "  Frontend:       http://localhost:5899"
-else
-	@echo "  App (nginx):    http://localhost:80"
-	@echo "  Backend API:    http://localhost:80/api/"
-endif
 	@echo ""
 	@echo "External dependencies (run on host):"
 	@echo "  Ollama:         http://localhost:11434"

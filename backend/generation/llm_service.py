@@ -41,22 +41,6 @@ OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "")
 OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "DivinityAI")
 
 # ---------------------------------------------------------------------------
-# DashScope (Alibaba Cloud) — Stage 1 of the two-stage pipeline
-# ---------------------------------------------------------------------------
-
-DASHSCOPE_BASE_URL = os.getenv(
-    "DASHSCOPE_BASE_URL",
-    "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-)
-
-DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
-
-DASHSCOPE_DEFAULT_MODEL = os.getenv(
-    "DASHSCOPE_STAGE_MODEL",
-    "deepseek-flash",
-)
-
-# ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
 
@@ -150,6 +134,7 @@ def generate(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     api_key: str | None = None,
+    base_url: str | None = None,
     stream: bool = False,
 ) -> str | Any:
     """Send a prompt to the LLM and return the generated text.
@@ -168,6 +153,8 @@ def generate(
         Max completion tokens.
     api_key:
         API key override.
+    base_url:
+        Base URL override for the API endpoint.
     stream:
         If ``True``, return the async generator / stream iterator so the
         caller can consume tokens as they arrive.
@@ -177,6 +164,7 @@ def generate(
         temperature=temperature,
         max_tokens=max_tokens,
         api_key=api_key,
+        base_url=base_url,
     )
 
     messages: list[BaseMessage] = []
@@ -200,6 +188,7 @@ def generate_with_history(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     api_key: str | None = None,
+    base_url: str | None = None,
     stream: bool = False,
 ) -> str | Any:
     """Send a full message history to the LLM.
@@ -218,6 +207,8 @@ def generate_with_history(
         Max completion tokens.
     api_key:
         API key override.
+    base_url:
+        Base URL override for the API endpoint.
     stream:
         If ``True``, return the stream iterator.
     """
@@ -226,6 +217,7 @@ def generate_with_history(
         temperature=temperature,
         max_tokens=max_tokens,
         api_key=api_key,
+        base_url=base_url,
     )
 
     langchain_messages: list[BaseMessage] = []
@@ -250,44 +242,3 @@ def generate_with_history(
     return response.content
 
 
-def generate_dashscope(
-    prompt: str,
-    *,
-    system: str | None = None,
-    model: str | None = None,
-    temperature: float = 0.7,
-    max_tokens: int | None = None,
-    stream: bool = False,
-) -> str | Any:
-    """Send a prompt to DashScope (DeepSeek Flash) — Stage 1 of the pipeline.
-
-    Thin wrapper around :func:`generate` that targets the DashScope
-    OpenAI-compatible endpoint.  Uses ``DASHSCOPE_API_KEY`` and
-    ``DASHSCOPE_DEFAULT_MODEL`` by default.
-
-    Parameters
-    ----------
-    prompt:
-        The user message / prompt text.
-    system:
-        Optional system message to set behaviour / context.
-    model:
-        Model name override.  Defaults to ``DASHSCOPE_STAGE_MODEL`` env var
-        (``deepseek-flash``).
-    temperature:
-        Sampling temperature.
-    max_tokens:
-        Max completion tokens.
-    stream:
-        If ``True``, return the stream iterator.
-    """
-    return generate(
-        prompt=prompt,
-        system=system,
-        model=model or DASHSCOPE_DEFAULT_MODEL,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        api_key=DASHSCOPE_API_KEY,
-        base_url=DASHSCOPE_BASE_URL,
-        stream=stream,
-    )

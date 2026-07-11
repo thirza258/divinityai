@@ -9,7 +9,7 @@ import logging
 
 from django.conf import settings
 
-from generation.llm_service import generate_dashscope
+from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +28,13 @@ Query: "{query}\""""
 
 
 def _get_model() -> str:
-    return getattr(settings, 'DASHSCOPE_STAGE_MODEL', 'deepseek-flash')
+    return getattr(settings, 'OPENROUTER_CLASSIFIER_MODEL', 'google/gemini-2.5-flash')
 
 
 def generate_hyde(query: str) -> str:
     """Generate a hypothetical document for HyDE retrieval."""
     try:
-        return str(generate_dashscope(
+        return str(generate(
             prompt=HYDE_PROMPT.format(query=query),
             model=_get_model(),
             temperature=0.3,
@@ -47,7 +47,7 @@ def generate_hyde(query: str) -> str:
 def decompose_fiqh(query: str) -> list[str]:
     """Decompose a fiqh query into sub-questions."""
     try:
-        result = generate_dashscope(
+        result = generate(
             prompt=SUBQUERY_PROMPT.format(query=query),
             model=_get_model(),
             temperature=0.3,

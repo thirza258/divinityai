@@ -63,14 +63,14 @@ def _load_indexes() -> None:
 def _load_canonical_corpus() -> None:
     """Load canonical texts from ChromaDB collections for citation verification."""
     try:
-        from chroma.chroma_utils import get_or_create_collection
-        from retrieval.dense_rag import OllamaEmbeddingFunction, _normalize_metadata
+        from chroma.chroma_utils import get_chroma_client
+        from retrieval.dense_rag import _normalize_metadata
 
-        emb_fn = OllamaEmbeddingFunction()
+        client = get_chroma_client()
 
         for coll_name in [QURAN_COLLECTION, HADITH_COLLECTION]:
             try:
-                collection = get_or_create_collection(name=coll_name, embedding_function=emb_fn)
+                collection = client.get_collection(coll_name)
                 docs = collection.get()
                 if docs.get('ids'):
                     records = []

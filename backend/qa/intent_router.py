@@ -9,7 +9,7 @@ import logging
 
 from django.conf import settings
 
-from generation.llm_service import generate_dashscope
+from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,12 @@ def classify_intent(query: str) -> dict:
     """
     classifier_model = getattr(
         settings,
-        'DASHSCOPE_STAGE_MODEL',
-        'deepseek-flash',
+        'OPENROUTER_CLASSIFIER_MODEL',
+        'google/gemini-2.5-flash',
     )
 
     try:
-        result = generate_dashscope(
+        result = generate(
             prompt=INTENT_SYSTEM_PROMPT.format(query=query),
             model=classifier_model,
             temperature=0.1,

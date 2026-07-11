@@ -139,7 +139,7 @@ class FatwaBoundaryTests(TestCase):
 # =========================================================================
 
 class IntentRouterTests(TestCase):
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.intent_router.generate')
     def test_classifies_quran_verse(self, mock_generate):
         mock_generate.return_value = json.dumps({
             "type": "quran_verse",
@@ -149,7 +149,7 @@ class IntentRouterTests(TestCase):
         self.assertEqual(result['type'], 'quran_verse')
         self.assertEqual(result['confidence'], 0.95)
 
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.intent_router.generate')
     def test_classifies_hadith(self, mock_generate):
         mock_generate.return_value = json.dumps({
             "type": "hadith",
@@ -158,7 +158,7 @@ class IntentRouterTests(TestCase):
         result = classify_intent("What did the Prophet say about intentions?")
         self.assertEqual(result['type'], 'hadith')
 
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.intent_router.generate')
     def test_classifies_off_domain(self, mock_generate):
         mock_generate.return_value = json.dumps({
             "type": "off_domain",
@@ -167,7 +167,7 @@ class IntentRouterTests(TestCase):
         result = classify_intent("What is the weather today?")
         self.assertEqual(result['type'], 'off_domain')
 
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.intent_router.generate')
     def test_fallback_on_parse_error(self, mock_generate):
         mock_generate.return_value = "not valid json!!!"
         result = classify_intent("some query")
@@ -401,7 +401,7 @@ class PipelineIntegrationTests(TestCase):
 
     @patch('qa.pipeline.generate')
     @patch('retrieval.hybrid_retriever.query_dense')
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.intent_router.generate')
     def test_phase2_off_domain_rejected(self, mock_intent, mock_dense, mock_gen):
         """Phase 2 should reject off-domain queries via scope guard."""
         self._patch_pipeline_loaders()
@@ -424,8 +424,8 @@ class PipelineIntegrationTests(TestCase):
 
     @patch('qa.pipeline.generate')
     @patch('retrieval.hybrid_retriever.query_dense')
-    @patch('qa.intent_router.generate_dashscope')
-    @patch('qa.hallucination_detector.generate_dashscope')
+    @patch('qa.intent_router.generate')
+    @patch('qa.hallucination_detector.generate')
     def test_phase2_full_pipeline(self, mock_halluc, mock_intent, mock_dense, mock_gen):
         """Phase 2 full pipeline with intent routing, safety, and generation."""
         self._patch_pipeline_loaders()
@@ -476,9 +476,9 @@ class PipelineIntegrationTests(TestCase):
 
     @patch('qa.pipeline.generate')
     @patch('retrieval.hybrid_retriever.query_dense')
-    @patch('qa.evidence_checker.generate_dashscope')
-    @patch('qa.query_rewriter.generate_dashscope')
-    @patch('qa.intent_router.generate_dashscope')
+    @patch('qa.evidence_checker.generate')
+    @patch('qa.query_rewriter.generate')
+    @patch('qa.intent_router.generate')
     def test_phase2_fatwa_triggers_disclaimer(self, mock_intent, mock_rewrite, mock_evidence, mock_dense, mock_gen):
         """Phase 2 should add disclaimer when answer triggers fatwa boundary."""
         self._patch_pipeline_loaders()
@@ -514,7 +514,7 @@ class PipelineIntegrationTests(TestCase):
             "but disliked by Allah. [C Bukhari/1]"
         )
 
-        with patch('qa.hallucination_detector.generate_dashscope') as mock_halluc:
+        with patch('qa.hallucination_detector.generate') as mock_halluc:
             mock_halluc.return_value = json.dumps({
                 "hallucinated": False,
                 "flagged_spans": [],

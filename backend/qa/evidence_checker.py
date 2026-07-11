@@ -10,7 +10,7 @@ import logging
 
 from django.conf import settings
 
-from generation.llm_service import generate_dashscope
+from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +41,12 @@ def check_evidence_sufficiency(query: str, chunks: list[dict]) -> bool:
 
     evidence_model = getattr(
         settings,
-        'DASHSCOPE_STAGE_MODEL',
-        'deepseek-flash',
+        'OPENROUTER_EVIDENCE_CHECK_MODEL',
+        'meta-llama/llama-3.3-70b-instruct',
     )
 
     try:
-        result = generate_dashscope(
+        result = generate(
             prompt=EVIDENCE_PROMPT.format(retrieved_chunks=context_str, query=query),
             model=evidence_model,
             temperature=0.1,

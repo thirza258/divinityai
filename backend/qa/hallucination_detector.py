@@ -10,7 +10,7 @@ import logging
 
 from django.conf import settings
 
-from generation.llm_service import generate_dashscope
+from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +46,12 @@ def detect_hallucinations(answer: str, context_chunks: list[dict]) -> dict:
 
     hallucination_model = getattr(
         settings,
-        'DASHSCOPE_STAGE_MODEL',
-        'deepseek-flash',
+        'OPENROUTER_HALLUCINATION_MODEL',
+        'meta-llama/llama-3.3-70b-instruct',
     )
 
     try:
-        result = generate_dashscope(
+        result = generate(
             prompt=HALLUCINATION_PROMPT.format(answer=answer, context=context_str),
             model=hallucination_model,
             temperature=0.1,
