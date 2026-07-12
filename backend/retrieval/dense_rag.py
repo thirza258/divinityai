@@ -163,14 +163,25 @@ def query_dense(
     ``metadata``, ``distance``.  Metadata is normalized to use
     consistent field names (``source_tag``, ``corpus``, ``text_ar``,
     ``text_en``).
+
+    Pre-embeds the query with Ollama and passes ``query_embeddings``
+    to ChromaDB so results are in the same vector space as the
+    ingested documents, regardless of the collection's persisted
+    embedding function.
     """
-    emb_fn = OllamaEmbeddingFunction()
-    collection = get_or_create_collection(
-        name=collection_name,
-        embedding_function=emb_fn,
-    )
+    t0 = time.time()
+
+    # Pre-embed with Ollama (same function used at ingestion time)
+    query_embedding = embed_texts([query_text])[0]
+
+    # Get collection WITHOUT embedding function — use whatever is persisted
+    collection = get_or_create_collection(name=collection_name)
+
+    print(f"[dense_rag] querying '{collection_name}' (k={k}): '{query_text[:60]}...'", flush=True)
+    logger.info("querying '%s' k=%d query='%s'", collection_name, k, query_text[:60])
+
     results = collection.query(
-        query_texts=[query_text],
+        query_embeddings=[query_embedding],
         n_results=k,
         where=where_filter,
     )
@@ -184,4 +195,61 @@ def query_dense(
             'metadata': _normalize_metadata(raw_meta, collection_name),
             'distance': results['distances'][0][i] if results.get('distances') else None,
         })
+
+    print(f"[dense_rag] '{collection_name}' returned {len(records)} results in {time.time() - t0:.2f}s", flush=True)
+    logger.info("'%s' returned %d results in %.2fs", collection_name, len(records), time.time() - t0)
     return records
+
+
+# ---------------------------------------------------------------------------
+# Dense-only retrieval across all corpora (replaces hybrid BM25+dense)
+# ---------------------------------------------------------------------------
+
+def retrieve_dense_all_corpora(
+    query_variants: list[str],
+    dense_k: int = 10,
+    top_n: int = 10,
+) -> list[dict]:
+    """Dense-only retrieval across all query variants and both corpora.
+
+    Queries the Quran and Hadith ChromaDB collections using Ollama
+    dense embeddings, merges results by distance, and returns the
+    top-N most relevant chunks.
+
+    Parameters
+    ----------
+    query_variants:
+        List of query strings to retrieve for (original + HyDE + sub-queries).
+    dense_k:
+        Number of results to retrieve per collection per query variant.
+    top_n:
+        Number of top results to return after merging.
+    """
+    t0 = time.time()
+    all_results: list[dict] = []
+
+    for idx, qv in enumerate(query_variants):
+        t_qv = time.time()
+        all_results.extend(query_dense(qv, QURAN_COLLECTION, k=dense_k))
+        all_results.extend(query_dense(qv, HADITH_COLLECTION, k=dense_k))
+        print(f"[dense_rag] variant {idx+1}/{len(query_variants)} done in {time.time() - t_qv:.2f}s", flush=True)
+
+    if not all_results:
+        print(f"[dense_rag] NO results across all corpora in {time.time() - t0:.2f}s", flush=True)
+        logger.warning("dense retrieval returned 0 results across all corpora")
+        return []
+
+    # Deduplicate by id, keeping the best (lowest distance) entry
+    seen: dict[str, dict] = {}
+    for r in all_results:
+        doc_id = r['id']
+        if doc_id not in seen or (r.get('distance') or float('inf')) < (seen[doc_id].get('distance') or float('inf')):
+            seen[doc_id] = r
+
+    # Sort by distance ascending (closest = most relevant)
+    ranked = sorted(seen.values(), key=lambda r: r.get('distance') or float('inf'))
+
+    result = ranked[:top_n]
+    print(f"[dense_rag] total={len(all_results)} raw, {len(seen)} unique, returning top {len(result)} in {time.time() - t0:.2f}s", flush=True)
+    logger.info("dense retrieval: %d raw, %d unique, top %d, elapsed=%.2fs", len(all_results), len(seen), len(result), time.time() - t0)
+    return result

@@ -220,9 +220,58 @@ OPENROUTER_HALLUCINATION_MODEL = os.getenv(
     "meta-llama/llama-3.3-70b-instruct",
 )
 
-# BM25 index directory (relative to BASE_DIR or absolute)
-BM25_INDEX_DIR = os.getenv("BM25_INDEX_DIR", str(BASE_DIR / "corpus" / "bm25_indexes"))
+# =============================================================================
+# Logging — everything to stdout for docker logs
+# =============================================================================
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[{levelname}] {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv('LOG_LEVEL', 'INFO'),
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'qa': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'retrieval': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'generation': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'chroma': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 
 # =============================================================================
 # CORS — Cross-Origin Resource Sharing

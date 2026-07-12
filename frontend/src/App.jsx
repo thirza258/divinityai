@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const APP_TITLE = import.meta.env.VITE_APP_TITLE || "DivinityAI";
 const APP_SUBTITLE = import.meta.env.VITE_APP_SUBTITLE || "Quran & Hadith QA";
 
@@ -62,6 +62,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("en");
+  const [health, setHealth] = useState(null);
   const chatEnd = useRef(null);
 
   const scrollToBottom = useCallback(() => {
@@ -71,6 +72,28 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  /* Poll health every 10 seconds */
+  useEffect(() => {
+    let mounted = true;
+
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/health`);
+        const data = await res.json();
+        if (mounted) setHealth({ ...data, _fetchError: false });
+      } catch {
+        if (mounted) setHealth((prev) => ({ ...prev, status: "error", _fetchError: true }));
+      }
+    };
+
+    checkHealth(); // immediate first check
+    const interval = setInterval(checkHealth, 10000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const sendQuery = async (e) => {
     e.preventDefault();
@@ -175,6 +198,51 @@ export default function App() {
           </span>
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/* HEALTH STATUS BAR                                             */}
+      {/* ============================================================ */}
+      {health && (
+        <div className={`px-4 py-1.5 text-center text-xs tracking-wide border-b ${
+          health._fetchError || health.status === "error"
+            ? "bg-red-50 border-red-300 text-red-800"
+            : health.status === "degraded"
+              ? "bg-gold-50 border-gold-300 text-gold-800"
+              : "bg-islam-50 border-islam-300 text-islam-800"
+        }`}>
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-4 flex-wrap">
+            {health._fetchError ? (
+              <span className="font-semibold">⚠️ Backend unreachable — service may be down</span>
+            ) : (
+              <>
+                {health.checks && Object.entries(health.checks).map(([name, info]) => {
+                  const dot = info.status === "ok" ? "●" : info.status === "degraded" ? "●" : "○";
+                  const color = info.status === "ok"
+                    ? "text-green-600"
+                    : info.status === "degraded"
+                      ? "text-gold-500"
+                      : "text-red-500";
+                  const detail = info.latency_ms != null
+                    ? `${info.latency_ms}ms`
+                    : info.detail || "";
+                  return (
+                    <span key={name} className="flex items-center gap-1" title={`${name}: ${detail}`}>
+                      <span className={`${color} text-base leading-none`}>{dot}</span>
+                      <span className="opacity-70">{name}</span>
+                    </span>
+                  );
+                })}
+                {health.status === "error" && (
+                  <span className="font-semibold text-red-700">⚠️ Some services unavailable</span>
+                )}
+                {health.status === "degraded" && (
+                  <span className="text-gold-700">⚠️ Partial service</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/* CHAT AREA                                                     */}

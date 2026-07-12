@@ -109,13 +109,25 @@ def get_or_create_collection(
     name:
         Collection name.  Defaults to :data:`CHROMA_DEFAULT_COLLECTION`.
     embedding_function:
-        Embedding function to use.  Defaults to the one returned by
-        :func:`get_embedding_function`.
+        Embedding function to use when **creating** a new collection.
+        Not passed when getting an existing collection, to avoid conflicts
+        with a persisted embedding function.
     metadata:
         Optional metadata dict (e.g. ``{"hnsw:space": "cosine"}``).
     """
     client = get_chroma_client()
     collection_name = name or CHROMA_DEFAULT_COLLECTION
+
+    try:
+        collection = client.get_collection(name=collection_name)
+        logger.debug("Using existing collection '%s'", collection_name)
+        return collection
+    except ValueError:
+        logger.info("Collection '%s' not found — creating it", collection_name)
+    except Exception:
+        logger.exception("Unexpected error getting collection '%s'", collection_name)
+        raise
+
     emb_fn = embedding_function or get_embedding_function()
 
     if metadata is None:
@@ -126,6 +138,7 @@ def get_or_create_collection(
         embedding_function=emb_fn,
         metadata=metadata,
     )
+    logger.info("Created collection '%s'", collection_name)
     return collection
 
 

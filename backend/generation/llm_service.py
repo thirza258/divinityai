@@ -8,6 +8,7 @@ model to use at invocation time.
 
 import logging
 import os
+import time
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -173,12 +174,25 @@ def generate(
     messages.append(HumanMessage(content=prompt))
 
     logger.info("Generating with model=%s  temperature=%s", model or OPENROUTER_DEFAULT_MODEL, temperature)
+    print(f"[llm] generating with model={model or OPENROUTER_DEFAULT_MODEL} temperature={temperature}", flush=True)
 
     if stream:
         return llm.stream(messages)
 
+    t0 = time.time()
     response = llm.invoke(messages)
-    return response.content
+    elapsed = time.time() - t0
+    content = response.content
+    if not content:
+        logger.warning(
+            "LLM returned empty content (model=%s, elapsed=%.2fs). "
+            "Check API key validity, rate limits, and model availability.",
+            model or OPENROUTER_DEFAULT_MODEL,
+            elapsed,
+        )
+    print(f"[llm] generation completed in {elapsed:.2f}s", flush=True)
+    logger.info("generation completed in %.2fs", elapsed)
+    return content
 
 
 def generate_with_history(

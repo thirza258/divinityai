@@ -52,5 +52,10 @@ def classify_intent(query: str) -> dict:
             return {'type': parsed['type'], 'confidence': float(parsed['confidence'])}
         raise ValueError(f"Missing keys in response: {parsed}")
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
-        logger.warning("Intent classification failed: %s — falling back to 'hadith'", exc)
+        logger.warning(
+            "Intent classification failed: %s — falling back to 'hadith'. "
+            "Raw response (first 200 chars): %s",
+            exc,
+            result[:200] if result else '<empty>',
+        )
         return {'type': 'hadith', 'confidence': 0.5}

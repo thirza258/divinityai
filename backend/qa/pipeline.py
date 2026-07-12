@@ -1,21 +1,17 @@
 """
 Pipeline orchestrator — wires together all RAG stages.
 
-Phase 1: direct retrieval → RRF → citation verify → grounded generation
+Phase 1: direct retrieval → citation verify → grounded generation
 Phase 2: intent → scope → rewrite → retrieve → verify → check → generate → safety
 """
 
 import logging
 import time
-from pathlib import Path
-from typing import Optional
 
 from django.conf import settings
 
-from corpus.bm25_index import BM25Index
-from retrieval.hybrid_retriever import retrieve_from_all_corpora
 from retrieval.citation_verifier import verify_chunks, load_canonical_corpus
-from retrieval.dense_rag import QURAN_COLLECTION, HADITH_COLLECTION
+from retrieval.dense_rag import QURAN_COLLECTION, HADITH_COLLECTION, retrieve_dense_all_corpora
 from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
@@ -24,40 +20,18 @@ logger = logging.getLogger(__name__)
 # Lazy-loaded resources (loaded once per process)
 # ---------------------------------------------------------------------------
 
-_bm25_quran: Optional[BM25Index] = None
-_bm25_hadith: Optional[BM25Index] = None
 _canonical_loaded: bool = False
 
 
-def _get_bm25_index_dir() -> Path:
-    return Path(getattr(settings, 'BM25_INDEX_DIR', Path.home() / '.divinityai' / 'bm25_indexes'))
+def _load_canonical() -> None:
+    """Load canonical corpus from ChromaDB for citation verification."""
+    global _canonical_loaded
 
-
-def _load_indexes() -> None:
-    """Load BM25 indexes and canonical corpus at first request."""
-    global _bm25_quran, _bm25_hadith, _canonical_loaded
-
-    if _bm25_quran is not None:
+    if _canonical_loaded:
         return
 
-    index_dir = _get_bm25_index_dir()
-
-    _bm25_quran = BM25Index(index_dir)
-    try:
-        _bm25_quran.load('quran_collection')
-    except FileNotFoundError:
-        logger.warning("BM25 Quran index not found at %s", index_dir / 'quran_collection.pkl')
-
-    _bm25_hadith = BM25Index(index_dir)
-    try:
-        _bm25_hadith.load('hadith_collection')
-    except FileNotFoundError:
-        logger.warning("BM25 Hadith index not found at %s", index_dir / 'hadith_collection.pkl')
-
-    # Load canonical corpus from ChromaDB for citation verification
-    if not _canonical_loaded:
-        _load_canonical_corpus()
-        _canonical_loaded = True
+    _load_canonical_corpus()
+    _canonical_loaded = True
 
 
 def _load_canonical_corpus() -> None:
@@ -124,7 +98,11 @@ class PipelineService:
 
     def run(self, query: str, language: str = 'en', max_sources: int = 5) -> dict:
         """Run the RAG pipeline and return a response dict."""
-        _load_indexes()
+        _canonical_load_start = time.time()
+        _load_canonical()
+        print(f"[pipeline] canonical corpus loaded in {time.time() - _canonical_load_start:.2f}s", flush=True)
+        logger.info("canonical corpus loaded in %.2fs", time.time() - _canonical_load_start)
+
         start = time.time()
         pipeline_meta = {
             'phase': self.phase,
@@ -132,13 +110,20 @@ class PipelineService:
             'retrieval_iterations': 1,
         }
 
+        print(f"[pipeline] phase={self.phase} | query='{query[:80]}' | language={language}", flush=True)
+        logger.info("phase=%s query='%s' language=%s", self.phase, query[:80], language)
+
         # --- Phase 2: Intent Router + Scope Guard ---
         intent = 'general'
         if self.phase >= 2:
             from .intent_router import classify_intent
             from .scope_guard import check_scope
 
+            t0 = time.time()
             intent_result = classify_intent(query)
+            print(f"[pipeline] intent classified as '{intent_result['type']}' (confidence={intent_result['confidence']}) in {time.time() - t0:.2f}s", flush=True)
+            logger.info("intent=%s confidence=%s elapsed=%.2fs", intent_result['type'], intent_result['confidence'], time.time() - t0)
+
             pipeline_meta['llm_calls'] += 1
             intent = intent_result['type']
             confidence = intent_result['confidence']
@@ -167,33 +152,49 @@ class PipelineService:
         query_variants = [query]
         if self.phase >= 2 and intent != 'quran_verse':
             from .query_rewriter import rewrite_queries
+            t0 = time.time()
             additional = rewrite_queries(query, intent)
+            print(f"[pipeline] query rewriting produced {len(additional.get('hyde', []))} hyde + {len(additional.get('sub_queries', []))} sub-queries in {time.time() - t0:.2f}s", flush=True)
+            logger.info("query rewriting: %d hyde + %d sub-queries, elapsed=%.2fs", len(additional.get('hyde', [])), len(additional.get('sub_queries', [])), time.time() - t0)
             pipeline_meta['llm_calls'] += 1
             query_variants = [query] + additional.get('hyde', []) + additional.get('sub_queries', [])
 
-        # --- Hybrid Retrieval ---
-        fused = retrieve_from_all_corpora(
+        # --- Dense-Only Retrieval ---
+        t0 = time.time()
+        print(f"[pipeline] starting dense retrieval with {len(query_variants)} query variants...", flush=True)
+        logger.info("starting dense retrieval: %d query variants", len(query_variants))
+        fused = retrieve_dense_all_corpora(
             query_variants=query_variants,
-            bm25_quran=_bm25_quran,
-            bm25_hadith=_bm25_hadith,
-            bm25_k=10,
             dense_k=10,
             top_n=10,
         )
+        print(f"[pipeline] dense retrieval returned {len(fused)} chunks in {time.time() - t0:.2f}s", flush=True)
+        logger.info("dense retrieval: %d chunks, elapsed=%.2fs", len(fused), time.time() - t0)
 
         # --- Citation Verification ---
+        t0 = time.time()
         verified = verify_chunks(fused)
+        print(f"[pipeline] citation verification completed in {time.time() - t0:.2f}s", flush=True)
+        logger.info("citation verification: elapsed=%.2fs", time.time() - t0)
 
         # --- Phase 2: Evidence Sufficiency Check ---
         evidence_sufficient = True
         if self.phase >= 2 and intent == 'fiqh':
             from .evidence_checker import check_evidence_sufficiency
+            t0 = time.time()
             evidence_sufficient = check_evidence_sufficiency(query, verified)
+            print(f"[pipeline] evidence check: sufficient={evidence_sufficient} in {time.time() - t0:.2f}s", flush=True)
+            logger.info("evidence check: sufficient=%s, elapsed=%.2fs", evidence_sufficient, time.time() - t0)
             pipeline_meta['llm_calls'] += 1
             # Simplified: single check; loop logic could be added in future
 
         # --- Grounded Generation ---
+        t0 = time.time()
+        print(f"[pipeline] generating answer with {len(verified)} context chunks...", flush=True)
+        logger.info("generating answer: %d context chunks", len(verified))
         answer = self._generate(query, verified, language)
+        print(f"[pipeline] generation completed in {time.time() - t0:.2f}s", flush=True)
+        logger.info("generation completed: elapsed=%.2fs", time.time() - t0)
         pipeline_meta['llm_calls'] += 1
 
         # --- Phase 2: Safety Layer ---
@@ -205,15 +206,20 @@ class PipelineService:
         }
         if self.phase >= 2:
             from .hallucination_detector import detect_hallucinations
+            t0 = time.time()
             h_result = detect_hallucinations(answer, verified)
+            print(f"[pipeline] hallucination check: detected={h_result.get('hallucinated', False)} in {time.time() - t0:.2f}s", flush=True)
+            logger.info("hallucination check: detected=%s, elapsed=%.2fs", h_result.get('hallucinated', False), time.time() - t0)
             pipeline_meta['llm_calls'] += 1
             safety['hallucination_detected'] = h_result.get('hallucinated', False)
             safety['flagged_spans'] = h_result.get('flagged_spans', [])
 
             from .fatwa_boundary import check_fatwa_boundary
+            t0 = time.time()
             fb_result = check_fatwa_boundary(answer)
             safety['fatwa_boundary_triggered'] = fb_result['triggered']
             safety['disclaimer'] = fb_result.get('disclaimer')
+            print(f"[pipeline] fatwa boundary check: triggered={fb_result['triggered']} in {time.time() - t0:.2f}s", flush=True)
 
         # --- Assemble response ---
         sources = verified[:max_sources]
@@ -232,8 +238,12 @@ class PipelineService:
                 'text_ar': meta.get('text_ar', ''),
                 'text_en': meta.get('text_en', ''),
                 'verification_status': chunk.get('verification_status', 'unknown'),
-                'retrieval_score': chunk.get('rrf_score', 0),
+                'retrieval_score': chunk.get('distance', 0),
             })
+
+        elapsed = round(time.time() - start, 3)
+        print(f"[pipeline] DONE — total elapsed={elapsed}s | llm_calls={pipeline_meta['llm_calls']} | sources={len(source_serialized)}", flush=True)
+        logger.info("pipeline complete: elapsed=%.3fs llm_calls=%d sources=%d", elapsed, pipeline_meta['llm_calls'], len(source_serialized))
 
         return {
             'query': query,
@@ -244,7 +254,7 @@ class PipelineService:
             'safety': safety,
             'pipeline_meta': {
                 **pipeline_meta,
-                'elapsed': round(time.time() - start, 3),
+                'elapsed': elapsed,
             },
         }
 

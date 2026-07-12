@@ -35,7 +35,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me}
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,nginx
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,nginx}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_DEFAULT_MODEL=${OPENROUTER_DEFAULT_MODEL:-google/gemini-2.5-flash}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -46,14 +46,12 @@ services:
       - QURAN_COLLECTION=${QURAN_COLLECTION:-quran_collection}
       - HADITH_COLLECTION=${HADITH_COLLECTION:-hadith_collection}
       - RAG_PHASE=${RAG_PHASE:-2}
-      - BM25_INDEX_DIR=/app/backend/corpus/bm25_indexes
       - OPENROUTER_GENERATION_MODEL=${OPENROUTER_GENERATION_MODEL:-google/gemini-2.5-flash}
       - OPENROUTER_CLASSIFIER_MODEL=${OPENROUTER_CLASSIFIER_MODEL:-google/gemini-2.5-flash}
       - OPENROUTER_EVIDENCE_CHECK_MODEL=${OPENROUTER_EVIDENCE_CHECK_MODEL:-meta-llama/llama-3.3-70b-instruct}
       - OPENROUTER_HALLUCINATION_MODEL=${OPENROUTER_HALLUCINATION_MODEL:-meta-llama/llama-3.3-70b-instruct}
     volumes:
       - ./backend:/app/backend
-      - bm25_data:/app/backend/corpus/bm25_indexes
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -66,14 +64,13 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: divinityai-frontend
-    # No host port — nginx proxies to frontend:5173 internally
-    expose:
-      - "5173"
+    ports:
+      - "5873:5173"
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
       - VITE_APP_TITLE=${VITE_APP_TITLE:-DivinityAI}
       - VITE_APP_SUBTITLE=${VITE_APP_SUBTITLE:-Quran & Hadith QA}
-      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost}
+      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost,divi.nevatal.tech,frontend}
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
@@ -97,6 +94,3 @@ services:
       - backend
       - frontend
     restart: unless-stopped
-
-volumes:
-  bm25_data:
