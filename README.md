@@ -7,18 +7,47 @@ A Retrieval-Augmented Generation system that answers questions grounded exclusiv
 ---
 
 ## Architecture
+```mermaid
+flowchart TD
+    U[User] --> F["Frontend chat UI<br/>React + Vite"]
+    F -->|POST /api/v1/query| Q[DRF QueryView]
+    Q --> P[PipelineService]
 
-```
-User Query
-  → Intent Router (LLM)          — classify: quran_verse | hadith | fiqh | calculation | off_domain
-  → Scope Guard                   — reject off-domain / low-confidence
-  → Query Rewriting (HyDE)        — generate hypothetical passages for better recall
-  → Hybrid Retrieval              — BM25 (sparse) + Ollama/embeddinggemma (dense)
-  → RRF Fusion (k=60)             — merge & rank results
-  → Citation Verifier             — exact → normalized → fuzzy → hallucinated
-  → Grounded Generation (LLM)     — context-only prompt, no external knowledge
-  → Safety Layer                  — hallucination detector + fatwa boundary
-  → Response with citations
+    F -->|GET /api/v1/health every 10s| H[HealthView]
+
+    subgraph Query_Pipeline[Query Pipeline]
+        P --> I["Intent Router<br/>quran_verse<br/>hadith<br/>fiqh<br/>calculation<br/>off_domain"]
+        I --> S[Scope Guard]
+        S -->|Blocked| B[Safe rejection message]
+        S -->|Allowed| R["Query Rewriting<br/>HyDE + sub-queries"]
+        R --> D[Dense Retrieval]
+        D --> O[(Ollama embeddings)]
+        D --> C[(ChromaDB Quran + Hadith)]
+        D --> V[Citation Verifier]
+        V --> E{Fiqh request?}
+        E -->|Yes| EC[Evidence Sufficiency Check]
+        E -->|No| G[Grounded Generation]
+        EC --> G
+        G --> H1[Hallucination Detector]
+        H1 --> F1[Fatwa Boundary Check]
+        F1 --> R1["Response JSON<br/>answer + sources + citations + safety"]
+    end
+
+    H --> HO[Ollama check]
+    H --> HC[ChromaDB check]
+    HO --> HS[Health status]
+    HC --> HS
+
+    R1 --> F
+    B --> F
+
+    subgraph Ingestion[Corpus Preparation]
+        I1[JSON corpus files] --> I2["Ingest Quran / Hadith commands"]
+        I2 --> I3[ChromaDB collections]
+    end
+
+    I3 -. used by .-> D
+    I4 -. used by .-> D
 ```
 
 ### Defense-in-Depth Hallucination Mitigation
