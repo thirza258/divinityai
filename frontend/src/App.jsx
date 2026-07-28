@@ -4,6 +4,23 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const APP_TITLE = import.meta.env.VITE_APP_TITLE || "DivinityAI";
 const APP_SUBTITLE = import.meta.env.VITE_APP_SUBTITLE || "Quran & Hadith QA";
 
+/* Abort queries that hang so the chat never gets stuck loading forever */
+const QUERY_TIMEOUT_MS = 90_000;
+
+/* Extract a readable message from an API error body */
+function apiErrorMessage(data, status) {
+  if (data) {
+    if (typeof data.detail === "string") return data.detail;
+    if (typeof data.error === "string") return data.error;
+    // DRF validation errors: {field: ["message", ...]}
+    const firstField = Object.values(data).find(
+      (v) => Array.isArray(v) && v.length > 0 && typeof v[0] === "string"
+    );
+    if (firstField) return firstField[0];
+  }
+  return `The server returned an unexpected response (HTTP ${status}). Please try again.`;
+}
+
 /* ------------------------------------------------------------------ */
 /* SVG decorative elements                                            */
 /* ------------------------------------------------------------------ */
@@ -105,21 +122,34 @@ export default function App() {
     setInput("");
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
+
     try {
       const res = await fetch(`${API_BASE}/api/v1/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, language, max_sources: 5 }),
+        signal: controller.signal,
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.detail || data.error || "Request failed");
+      // The body may not be JSON (proxy error pages, empty 5xx responses)
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
       }
 
+      if (!res.ok || !data) {
+        throw new Error(apiErrorMessage(data, res.status));
+      }
+
+      const answer = typeof data.answer === "string" ? data.answer : "";
       const botMsg = {
         role: "assistant",
-        content: data.answer || "No answer received.",
+        content: answer || "Sorry — no answer was received. Please try again.",
+        error: Boolean(data.error) || !answer,
         sources: data.sources || [],
         citations: data.citations || [],
         intent: data.intent || "general",
@@ -128,15 +158,20 @@ export default function App() {
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
+      const detail =
+        err.name === "AbortError"
+          ? "the request took too long and was cancelled. Please try again."
+          : err.message || "please try again.";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Sorry, something went wrong: ${err.message}`,
+          content: `Sorry, something went wrong: ${detail}`,
           error: true,
         },
       ]);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };

@@ -3,13 +3,45 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 
-// Mock fetch globally
+// Mock fetch globally, routed by URL: the health poll (fired on mount every
+// render) gets a canned healthy response so it can never consume the mocks
+// meant for the query endpoint. Tests control the query endpoint via mockQuery().
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+let queryImpl;
+
+function mockQuery(impl) {
+  queryImpl = impl;
+}
+
+function jsonResponse(body, ok = true, status = 200) {
+  return { ok, status, json: () => Promise.resolve(body) };
+}
+
+const queryCalls = () =>
+  mockFetch.mock.calls.filter(([url]) => String(url).includes('/api/v1/query'));
 
 describe('App', () => {
   beforeEach(() => {
     mockFetch.mockReset();
+    queryImpl = () =>
+      Promise.resolve(
+        jsonResponse({
+          answer: 'Default answer.',
+          sources: [],
+          citations: [],
+          intent: 'general',
+          safety: {},
+          pipeline_meta: {},
+        })
+      );
+    mockFetch.mockImplementation((url) => {
+      if (String(url).includes('/api/v1/health')) {
+        return Promise.resolve(jsonResponse({ status: 'ok', phase: 2, checks: {} }));
+      }
+      return queryImpl();
+    });
   });
 
   // =========================================================================
@@ -105,18 +137,18 @@ describe('App', () => {
 
   it('clears input after submitting', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
           answer: 'The Quran says...',
           sources: [],
           citations: [],
           intent: 'general',
           safety: {},
           pipeline_meta: {},
-        }),
-    });
+        })
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -159,18 +191,6 @@ describe('App', () => {
 
   it('sends a POST request with correct payload', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          answer: 'Response text',
-          sources: [],
-          citations: [],
-          intent: 'general',
-          safety: {},
-          pipeline_meta: {},
-        }),
-    });
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -179,11 +199,13 @@ describe('App', () => {
     await user.type(input, 'What is Islam?');
     await user.click(button);
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url, options] = mockFetch.mock.calls[0];
+    expect(queryCalls()).toHaveLength(1);
+    const [url, options] = queryCalls()[0];
     expect(url).toContain('/api/v1/query');
     expect(options.method).toBe('POST');
     expect(options.headers['Content-Type']).toBe('application/json');
+    // Requests must carry an abort signal so they can time out
+    expect(options.signal).toBeDefined();
 
     const body = JSON.parse(options.body);
     expect(body.query).toBe('What is Islam?');
@@ -193,10 +215,9 @@ describe('App', () => {
 
   it('displays the bot response after successful API call', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
           answer: 'The Quran emphasizes patience.',
           sources: [
             {
@@ -217,8 +238,9 @@ describe('App', () => {
             disclaimer: null,
           },
           pipeline_meta: { phase: 1, llm_calls: 1, elapsed: 0.5 },
-        }),
-    });
+        })
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -234,10 +256,9 @@ describe('App', () => {
 
   it('shows sources section when sources are returned', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
           answer: 'Answer with sources.',
           sources: [
             {
@@ -253,8 +274,9 @@ describe('App', () => {
           intent: 'quran_verse',
           safety: {},
           pipeline_meta: {},
-        }),
-    });
+        })
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -270,10 +292,9 @@ describe('App', () => {
 
   it('shows safety disclaimer when present', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
           answer: 'Regarding talaq...',
           sources: [],
           citations: [],
@@ -285,8 +306,9 @@ describe('App', () => {
             disclaimer: 'For a definitive ruling, please consult a qualified scholar.',
           },
           pipeline_meta: {},
-        }),
-    });
+        })
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -304,14 +326,18 @@ describe('App', () => {
 
   it('shows error message on API failure', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: () =>
-        Promise.resolve({
-          error: 'Pipeline processing failed',
-          detail: 'Something went wrong',
-        }),
-    });
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            error: 'Pipeline processing failed',
+            detail: 'Something went wrong',
+          },
+          false,
+          500
+        )
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -320,14 +346,19 @@ describe('App', () => {
     await user.type(input, 'test');
     await user.click(button);
 
+    // The specific server detail is surfaced, loading is cleared, input usable
     await waitFor(() => {
-      expect(screen.getByText(/Sorry, something went wrong/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Sorry, something went wrong: Something went wrong/)
+      ).toBeInTheDocument();
     });
+    expect(screen.queryByText(/Searching Quran & Hadith/)).not.toBeInTheDocument();
+    expect(input).not.toBeDisabled();
   });
 
   it('shows error message on network failure', async () => {
     const user = userEvent.setup();
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    mockQuery(() => Promise.reject(new TypeError('Failed to fetch')));
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -337,7 +368,92 @@ describe('App', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/Sorry, something went wrong/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Sorry, something went wrong: Failed to fetch/)
+      ).toBeInTheDocument();
+    });
+    expect(input).not.toBeDisabled();
+  });
+
+  it('shows a readable error when the response body is not JSON', async () => {
+    const user = userEvent.setup();
+    // e.g. an nginx 502/504 HTML page — res.json() rejects
+    mockQuery(() =>
+      Promise.resolve({
+        ok: false,
+        status: 502,
+        json: () => Promise.reject(new SyntaxError('Unexpected token <')),
+      })
+    );
+
+    render(<App />);
+    const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
+    const button = screen.getByRole('button', { name: /Ask/i });
+
+    await user.type(input, 'test');
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText(/HTTP 502/)).toBeInTheDocument();
+    });
+    expect(input).not.toBeDisabled();
+  });
+
+  it('renders a backend chat-shaped error (HTTP 200, error flag) as an error bubble', async () => {
+    const user = userEvent.setup();
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
+          answer: 'Sorry — something went wrong while processing your question.',
+          error: true,
+          sources: [],
+          citations: [],
+          intent: 'error',
+          safety: {},
+          pipeline_meta: {},
+        })
+      )
+    );
+
+    render(<App />);
+    const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
+    const button = screen.getByRole('button', { name: /Ask/i });
+
+    await user.type(input, 'test');
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Sorry — something went wrong while processing your question/)
+      ).toBeInTheDocument();
+    });
+    expect(input).not.toBeDisabled();
+  });
+
+  it('shows a fallback message when the answer is empty', async () => {
+    const user = userEvent.setup();
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
+          answer: '',
+          sources: [],
+          citations: [],
+          intent: 'general',
+          safety: {},
+          pipeline_meta: {},
+        })
+      )
+    );
+
+    render(<App />);
+    const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
+    const button = screen.getByRole('button', { name: /Ask/i });
+
+    await user.type(input, 'test');
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no answer was received/)).toBeInTheDocument();
     });
   });
 
@@ -347,18 +463,18 @@ describe('App', () => {
 
   it('renders Quran citations with styled spans', async () => {
     const user = userEvent.setup();
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
           answer: 'Allah says [Q 2:255] is the greatest verse.',
           sources: [],
           citations: ['Q 2:255'],
           intent: 'quran_verse',
           safety: {},
           pipeline_meta: {},
-        }),
-    });
+        })
+      )
+    );
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -383,7 +499,7 @@ describe('App', () => {
     const promise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockFetch.mockReturnValueOnce(promise);
+    mockQuery(() => promise);
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -395,17 +511,18 @@ describe('App', () => {
     expect(screen.getByText(/Searching Quran & Hadith/)).toBeInTheDocument();
 
     // Clean up
-    resolvePromise({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          answer: 'Done',
-          sources: [],
-          citations: [],
-          intent: 'general',
-          safety: {},
-          pipeline_meta: {},
-        }),
+    resolvePromise(
+      jsonResponse({
+        answer: 'Done',
+        sources: [],
+        citations: [],
+        intent: 'general',
+        safety: {},
+        pipeline_meta: {},
+      })
+    );
+    await waitFor(() => {
+      expect(screen.queryByText(/Searching Quran & Hadith/)).not.toBeInTheDocument();
     });
   });
 
@@ -415,7 +532,7 @@ describe('App', () => {
     const promise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockFetch.mockReturnValueOnce(promise);
+    mockQuery(() => promise);
 
     render(<App />);
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
@@ -427,17 +544,18 @@ describe('App', () => {
     expect(input).toBeDisabled();
 
     // Clean up
-    resolvePromise({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          answer: 'Done',
-          sources: [],
-          citations: [],
-          intent: 'general',
-          safety: {},
-          pipeline_meta: {},
-        }),
+    resolvePromise(
+      jsonResponse({
+        answer: 'Done',
+        sources: [],
+        citations: [],
+        intent: 'general',
+        safety: {},
+        pipeline_meta: {},
+      })
+    );
+    await waitFor(() => {
+      expect(input).not.toBeDisabled();
     });
   });
 });
