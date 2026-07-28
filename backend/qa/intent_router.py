@@ -41,6 +41,7 @@ def classify_intent(query: str) -> dict:
         'google/gemini-2.5-flash',
     )
 
+    result = None
     try:
         result = generate(
             prompt=INTENT_SYSTEM_PROMPT.format(query=query),

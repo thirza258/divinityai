@@ -30,12 +30,18 @@ def _load_canonical() -> None:
     if _canonical_loaded:
         return
 
-    _load_canonical_corpus()
-    _canonical_loaded = True
+    # Only latch on success — a failed load is retried on the next request
+    # instead of leaving citation verification blind for the process lifetime.
+    if _load_canonical_corpus():
+        _canonical_loaded = True
 
 
-def _load_canonical_corpus() -> None:
-    """Load canonical texts from ChromaDB collections for citation verification."""
+def _load_canonical_corpus() -> bool:
+    """Load canonical texts from ChromaDB collections for citation verification.
+
+    Returns True if at least one collection loaded successfully.
+    """
+    loaded_any = False
     try:
         from chroma.chroma_utils import get_chroma_client
         from retrieval.dense_rag import _normalize_metadata
@@ -56,11 +62,13 @@ def _load_canonical_corpus() -> None:
                             'text_ar': normalized.get('text_ar', ''),
                         })
                     load_canonical_corpus(records)
+                    loaded_any = True
                     logger.info("Loaded canonical corpus from '%s' (%d docs)", coll_name, len(records))
             except Exception as exc:
                 logger.warning("Could not load canonical corpus from '%s': %s", coll_name, exc)
     except Exception as exc:
         logger.warning("Could not load canonical corpus: %s", exc)
+    return loaded_any
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +175,7 @@ class PipelineService:
             query_variants=query_variants,
             dense_k=10,
             top_n=10,
+            max_distance=getattr(settings, 'RAG_MAX_DISTANCE', None),
         )
         print(f"[pipeline] dense retrieval returned {len(fused)} chunks in {time.time() - t0:.2f}s", flush=True)
         logger.info("dense retrieval: %d chunks, elapsed=%.2fs", len(fused), time.time() - t0)
@@ -174,6 +183,13 @@ class PipelineService:
         # --- Citation Verification ---
         t0 = time.time()
         verified = verify_chunks(fused)
+        # PRD §5.6 — chunks that fail verification are removed before
+        # generation so fabricated references never reach the LLM context.
+        hallucinated_count = sum(1 for c in verified if c.get('verification_status') == 'hallucinated')
+        if hallucinated_count:
+            verified = [c for c in verified if c.get('verification_status') != 'hallucinated']
+            print(f"[pipeline] dropped {hallucinated_count} hallucinated chunks before generation", flush=True)
+            logger.warning("dropped %d hallucinated chunks before generation", hallucinated_count)
         print(f"[pipeline] citation verification completed in {time.time() - t0:.2f}s", flush=True)
         logger.info("citation verification: elapsed=%.2fs", time.time() - t0)
 
@@ -197,6 +213,13 @@ class PipelineService:
         logger.info("generation completed: elapsed=%.2fs", time.time() - t0)
         pipeline_meta['llm_calls'] += 1
 
+        if not answer:
+            logger.warning("LLM returned an empty answer for query: %s", query[:100])
+            answer = (
+                "Sorry — I could not generate an answer right now. "
+                "Please try again in a moment."
+            )
+
         # --- Phase 2: Safety Layer ---
         safety = {
             'hallucination_detected': False,
@@ -212,7 +235,18 @@ class PipelineService:
             logger.info("hallucination check: detected=%s, elapsed=%.2fs", h_result.get('hallucinated', False), time.time() - t0)
             pipeline_meta['llm_calls'] += 1
             safety['hallucination_detected'] = h_result.get('hallucinated', False)
-            safety['flagged_spans'] = h_result.get('flagged_spans', [])
+            # Detector returns spans as dicts ({"text", "reason"}); the API
+            # contract (SafetyResultSerializer) expects a list of strings.
+            safety['flagged_spans'] = [
+                f"{s.get('text', '')} — {s.get('reason', '')}" if isinstance(s, dict) else str(s)
+                for s in h_result.get('flagged_spans', [])
+            ]
+            if safety['hallucination_detected']:
+                answer += (
+                    "\n\n⚠️ Note: parts of this answer could not be verified "
+                    "against the retrieved sources. Please double-check the "
+                    "citations before relying on it."
+                )
 
             from .fatwa_boundary import check_fatwa_boundary
             t0 = time.time()

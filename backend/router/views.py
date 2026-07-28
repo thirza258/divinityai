@@ -39,7 +39,11 @@ def _parse_json_body(request: HttpRequest) -> dict:
         body = request.body.decode("utf-8")
         if not body.strip():
             return {}
-        return json.loads(body)
+        parsed = json.loads(body)
+        if not isinstance(parsed, dict):
+            logger.warning("Request body is valid JSON but not an object: %s", type(parsed).__name__)
+            return {}
+        return parsed
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         logger.warning("Failed to parse request body: %s", exc)
         return {}
@@ -349,13 +353,17 @@ def llm_generate(request: HttpRequest) -> JsonResponse | StreamingHttpResponse:
         return _error("Method not allowed — use POST", status=405)
 
     data = _parse_json_body(request)
-    prompt = data.get("prompt", "").strip()
+    prompt = data.get("prompt", "")
+    prompt = prompt.strip() if isinstance(prompt, str) else ""
     if not prompt:
         return _error("'prompt' (non-empty string) is required")
 
     system = data.get("system")
     model = data.get("model")
-    temperature = float(data.get("temperature", 0.7))
+    try:
+        temperature = float(data.get("temperature", 0.7))
+    except (ValueError, TypeError):
+        return _error("'temperature' must be a number")
     max_tokens = data.get("max_tokens")
     stream = bool(data.get("stream", False))
 

@@ -444,13 +444,15 @@ class LLMGenerateTests(TestCase):
         self.assertEqual(data['generated'], 'Response with params.')
 
     def test_generate_invalid_temperature(self):
-        """Non-numeric temperature raises ValueError → 500."""
-        with self.assertRaises(ValueError):
-            self.client.post(
-                '/api/generate/',
-                data=json.dumps({'prompt': 'test', 'temperature': 'cold'}),
-                content_type='application/json',
-            )
+        """Non-numeric temperature → 400 JSON error."""
+        resp = self.client.post(
+            '/api/generate/',
+            data=json.dumps({'prompt': 'test', 'temperature': 'cold'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertIn('temperature', data['error'])
 
     def test_generate_invalid_max_tokens(self):
         resp = self.client.post(

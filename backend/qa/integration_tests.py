@@ -21,7 +21,9 @@ class HealthEndpointTests(TestCase):
         self.client = Client()
 
     def test_health_returns_ok(self):
-        resp = self.client.get('/api/v1/health')
+        with patch('qa.views._check_ollama', return_value={'status': 'ok'}), \
+             patch('qa.views._check_chroma', return_value={'status': 'ok'}):
+            resp = self.client.get('/api/v1/health')
         self.assertEqual(resp.status_code, 200)
         data = json.loads(resp.content)
         self.assertEqual(data['status'], 'ok')
@@ -96,11 +98,14 @@ class QueryEndpointValidationTests(TestCase):
                 data=json.dumps({'query': 'test question'}),
                 content_type='application/json',
             )
-            # Pipeline exception → 500
-            self.assertEqual(resp.status_code, 500)
+            # Pipeline exception → chat-shaped 200 with a friendly answer
+            self.assertEqual(resp.status_code, 200)
             data = json.loads(resp.content)
-            self.assertIn('error', data)
-            self.assertEqual(data['error'], 'Pipeline processing failed')
+            self.assertTrue(data['error'])
+            self.assertIn('Sorry', data['answer'])
+            self.assertEqual(data['sources'], [])
+            # Internal exception details must not leak to the client
+            self.assertNotIn('No API key', json.dumps(data))
 
     def test_valid_full_request(self):
         """Full request with all fields should be accepted."""
@@ -119,7 +124,9 @@ class QueryEndpointValidationTests(TestCase):
                 }),
                 content_type='application/json',
             )
-            self.assertEqual(resp.status_code, 500)  # Pipeline fails but validation passes
+            # Pipeline fails but validation passes → chat-shaped error, 200
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(json.loads(resp.content)['error'])
 
     def test_default_language_is_en(self):
         """If language is omitted, it defaults to 'en'."""
@@ -134,7 +141,8 @@ class QueryEndpointValidationTests(TestCase):
                 content_type='application/json',
             )
             # Should get past validation to pipeline execution
-            self.assertEqual(resp.status_code, 500)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(json.loads(resp.content)['error'])
 
     def test_default_max_sources_is_5(self):
         """If max_sources is omitted, it defaults to 5."""
@@ -148,7 +156,8 @@ class QueryEndpointValidationTests(TestCase):
                 data=json.dumps({'query': 'test'}),
                 content_type='application/json',
             )
-            self.assertEqual(resp.status_code, 500)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(json.loads(resp.content)['error'])
 
 
 # =========================================================================

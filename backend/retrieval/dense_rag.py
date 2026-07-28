@@ -209,6 +209,7 @@ def retrieve_dense_all_corpora(
     query_variants: list[str],
     dense_k: int = 10,
     top_n: int = 10,
+    max_distance: float | None = None,
 ) -> list[dict]:
     """Dense-only retrieval across all query variants and both corpora.
 
@@ -224,6 +225,10 @@ def retrieve_dense_all_corpora(
         Number of results to retrieve per collection per query variant.
     top_n:
         Number of top results to return after merging.
+    max_distance:
+        Relevance cutoff — chunks with a cosine distance above this value
+        are dropped so unrelated passages never reach generation.
+        ``None`` disables the cutoff.  Chunks without a distance are kept.
     """
     t0 = time.time()
     all_results: list[dict] = []
@@ -248,6 +253,13 @@ def retrieve_dense_all_corpora(
 
     # Sort by distance ascending (closest = most relevant)
     ranked = sorted(seen.values(), key=lambda r: r.get('distance') or float('inf'))
+
+    if max_distance is not None:
+        before = len(ranked)
+        ranked = [r for r in ranked if r.get('distance') is None or r['distance'] <= max_distance]
+        if before != len(ranked):
+            print(f"[dense_rag] relevance cutoff (max_distance={max_distance}) dropped {before - len(ranked)}/{before} chunks", flush=True)
+            logger.info("relevance cutoff max_distance=%s dropped %d/%d chunks", max_distance, before - len(ranked), before)
 
     result = ranked[:top_n]
     print(f"[dense_rag] total={len(all_results)} raw, {len(seen)} unique, returning top {len(result)} in {time.time() - t0:.2f}s", flush=True)

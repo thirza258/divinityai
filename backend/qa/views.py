@@ -24,10 +24,11 @@ PHASE = getattr(settings, 'RAG_PHASE', 1)
 
 def _check_ollama() -> dict:
     """Check Ollama is reachable and can produce embeddings."""
-    from retrieval.dense_rag import _embed_single, OLLAMA_EMBED_MODEL
-
     start = time.monotonic()
+    OLLAMA_EMBED_MODEL = "unknown"
     try:
+        from retrieval.dense_rag import _embed_single, OLLAMA_EMBED_MODEL
+
         embedding = _embed_single("test")
         latency_ms = round((time.monotonic() - start) * 1000)
         if embedding and len(embedding) > 0:
@@ -54,12 +55,14 @@ def _check_ollama() -> dict:
 
 def _check_chroma() -> dict:
     """Check ChromaDB is reachable and collections exist."""
-    from chroma.chroma_utils import get_chroma_client, get_or_create_collection
-    from chroma.chroma_settings import CHROMA_HOST, CHROMA_PORT
-    from retrieval.dense_rag import QURAN_COLLECTION, HADITH_COLLECTION
-
     start = time.monotonic()
+    host = "unknown"
     try:
+        from chroma.chroma_utils import get_chroma_client, get_or_create_collection
+        from chroma.chroma_settings import CHROMA_HOST, CHROMA_PORT
+        from retrieval.dense_rag import QURAN_COLLECTION, HADITH_COLLECTION
+
+        host = f"{CHROMA_HOST}:{CHROMA_PORT}"
         client = get_chroma_client()
         collections_info = {}
         for name in [QURAN_COLLECTION, HADITH_COLLECTION]:
@@ -70,7 +73,6 @@ def _check_chroma() -> dict:
                 collections_info[name] = -1
 
         latency_ms = round((time.monotonic() - start) * 1000)
-        host = f"{CHROMA_HOST}:{CHROMA_PORT}"
 
         # Determine status: ok if all have docs, degraded if some missing
         counts = collections_info.values()
@@ -93,10 +95,39 @@ def _check_chroma() -> dict:
         latency_ms = round((time.monotonic() - start) * 1000)
         return {
             "status": "error",
-            "host": f"{CHROMA_HOST}:{CHROMA_PORT}",
+            "host": host,
             "latency_ms": latency_ms,
             "detail": str(exc),
         }
+
+
+PIPELINE_ERROR_MESSAGE = (
+    "Sorry — something went wrong while processing your question. "
+    "Please try again in a moment."
+)
+
+
+def _pipeline_error_response(query: str) -> dict:
+    """Chat-shaped body returned when the pipeline fails.
+
+    Errors are delivered as a normal chat answer (HTTP 200) so the client
+    always renders a readable message instead of an HTTP error page.
+    """
+    return {
+        'query': query,
+        'intent': 'error',
+        'answer': PIPELINE_ERROR_MESSAGE,
+        'sources': [],
+        'citations': [],
+        'safety': {
+            'hallucination_detected': False,
+            'flagged_spans': [],
+            'fatwa_boundary_triggered': False,
+            'disclaimer': None,
+        },
+        'pipeline_meta': {'phase': PHASE, 'llm_calls': 0, 'retrieval_iterations': 0},
+        'error': True,
+    }
 
 
 class QueryView(APIView):
@@ -116,17 +147,15 @@ class QueryView(APIView):
                 language=data['language'],
                 max_sources=data['max_sources'],
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("Pipeline failed for query: %s", data['query'][:100])
-            return Response(
-                {'error': 'Pipeline processing failed', 'detail': str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            return Response(_pipeline_error_response(data['query']))
 
         response_serializer = QueryResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.validated_data)
         # Fallback: return raw result if serialization fails
+        logger.warning("Response serialization failed: %s", response_serializer.errors)
         return Response(result)
 
 

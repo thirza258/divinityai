@@ -194,6 +194,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Phase: 1 = core retrieval + generation, 2 = full pipeline with intent/safety
 RAG_PHASE = int(os.getenv("RAG_PHASE", "2"))
 
+# Relevance cutoff for dense retrieval (cosine distance, 0 = identical,
+# 2 = opposite). Chunks above this distance are dropped so unrelated
+# passages never reach generation; if nothing passes, the pipeline answers
+# "I do not have a grounded source..." instead of hallucinating.
+# Tune against real queries; set empty to disable.
+_rag_max_distance = os.getenv("RAG_MAX_DISTANCE", "0.75")
+RAG_MAX_DISTANCE = float(_rag_max_distance) if _rag_max_distance else None
+
 # Ollama embedding configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "embeddinggemma")

@@ -1,9 +1,7 @@
 """Unit + integration tests for QA pipeline components."""
 
 import json
-import tempfile
 from unittest.mock import patch, MagicMock
-from pathlib import Path
 
 from django.test import TestCase, override_settings
 
@@ -15,9 +13,7 @@ from qa.serializers import (
     SafetyResultSerializer,
 )
 from qa.intent_router import classify_intent
-from qa.pipeline import PipelineService, _load_indexes
-from corpus.arabic_utils import normalize_arabic
-from corpus.bm25_index import BM25Index
+from qa.pipeline import PipelineService
 from retrieval.citation_verifier import load_canonical_corpus
 
 # ---------------------------------------------------------------------------
@@ -174,6 +170,14 @@ class IntentRouterTests(TestCase):
         self.assertEqual(result['type'], 'hadith')
         self.assertEqual(result['confidence'], 0.5)
 
+    @patch('qa.intent_router.generate')
+    def test_fallback_when_generate_raises_value_error(self, mock_generate):
+        """generate() raising before assignment must not UnboundLocalError."""
+        mock_generate.side_effect = ValueError("bad client config")
+        result = classify_intent("some query")
+        self.assertEqual(result['type'], 'hadith')
+        self.assertEqual(result['confidence'], 0.5)
+
 
 # =========================================================================
 # Unit tests: Serializers
@@ -261,64 +265,26 @@ class SerializerTests(TestCase):
 # =========================================================================
 
 class PipelineIntegrationTests(TestCase):
-    """End-to-end pipeline tests with real ChromaDB + BM25, mocked LLM."""
+    """End-to-end pipeline tests with mocked retrieval and LLM."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.tmpdir = tempfile.mkdtemp(prefix="pipeline_test_")
-
-        # Build BM25 Quran index
-        bm25_dir = Path(cls.tmpdir) / "bm25"
-        bm25_quran = BM25Index(bm25_dir)
-        bm25_docs = []
-        for ayah in SAMPLE_QURAN:
-            bm25_docs.append({
-                "id": ayah["id"],
-                "text_normalized": normalize_arabic(ayah["text_ar"]),
-            })
-        bm25_quran.build(bm25_docs)
-        bm25_quran.save("quran_collection")
-
-        # Build BM25 Hadith index
-        bm25_hadith = BM25Index(bm25_dir)
-        hadith_docs = []
-        for h in SAMPLE_HADITH:
-            hadith_docs.append({
-                "id": h["id"],
-                "text_normalized": normalize_arabic(h["text_ar"]),
-            })
-        bm25_hadith.build(hadith_docs)
-        bm25_hadith.save("hadith_collection")
-
-        # Load canonical corpus
+        # Load canonical corpus for citation verification
         load_canonical_corpus(SAMPLE_QURAN + SAMPLE_HADITH)
 
-        cls.bm25_dir = bm25_dir
-
     def _patch_pipeline_loaders(self):
-        """Replace the module-level _load_indexes to use test data."""
+        """Mark the canonical corpus as loaded so the pipeline skips ChromaDB."""
         import qa.pipeline as pipeline_mod
-
-        bm25_dir = self.bm25_dir
-        bm25_quran = BM25Index(bm25_dir)
-        bm25_quran.load("quran_collection")
-        bm25_hadith = BM25Index(bm25_dir)
-        bm25_hadith.load("hadith_collection")
-
-        pipeline_mod._bm25_quran = bm25_quran
-        pipeline_mod._bm25_hadith = bm25_hadith
         pipeline_mod._canonical_loaded = True
 
     def tearDown(self):
         """Reset pipeline globals after each test."""
         import qa.pipeline as pipeline_mod
-        pipeline_mod._bm25_quran = None
-        pipeline_mod._bm25_hadith = None
         pipeline_mod._canonical_loaded = False
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     def test_phase1_pipeline_returns_correct_structure(self, mock_dense, mock_generate):
         """Phase 1 pipeline should return a properly structured response."""
         self._patch_pipeline_loaders()
@@ -384,7 +350,7 @@ class PipelineIntegrationTests(TestCase):
         self.assertEqual(result["pipeline_meta"]["phase"], 1)
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     def test_phase1_no_results_graceful(self, mock_dense, mock_generate):
         """When no retrieval results, pipeline should return graceful message."""
         self._patch_pipeline_loaders()
@@ -400,7 +366,7 @@ class PipelineIntegrationTests(TestCase):
         self.assertEqual(result["citations"], [])
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     @patch('qa.intent_router.generate')
     def test_phase2_off_domain_rejected(self, mock_intent, mock_dense, mock_gen):
         """Phase 2 should reject off-domain queries via scope guard."""
@@ -423,7 +389,7 @@ class PipelineIntegrationTests(TestCase):
         mock_gen.assert_not_called()
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     @patch('qa.intent_router.generate')
     @patch('qa.hallucination_detector.generate')
     def test_phase2_full_pipeline(self, mock_halluc, mock_intent, mock_dense, mock_gen):
@@ -475,7 +441,7 @@ class PipelineIntegrationTests(TestCase):
         self.assertGreaterEqual(result["pipeline_meta"]["llm_calls"], 2)
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     @patch('qa.evidence_checker.generate')
     @patch('qa.query_rewriter.generate')
     @patch('qa.intent_router.generate')
@@ -529,7 +495,7 @@ class PipelineIntegrationTests(TestCase):
             self.assertIn("consult a qualified scholar", result["safety"]["disclaimer"])
 
     @patch('qa.pipeline.generate')
-    @patch('retrieval.hybrid_retriever.query_dense')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
     def test_citation_verification_in_pipeline(self, mock_dense, mock_gen):
         """Citations in the generated answer should be verified against canonical corpus."""
         self._patch_pipeline_loaders()
@@ -557,3 +523,99 @@ class PipelineIntegrationTests(TestCase):
         self.assertEqual(result["sources"][0]["verification_status"], "exact")
         # Citations should include the source tag
         self.assertIn("Q 2:153", result["citations"])
+
+    @patch('qa.pipeline.generate')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
+    def test_hallucinated_chunks_never_reach_generation(self, mock_dense, mock_gen):
+        """Chunks failing citation verification are dropped; if none remain,
+        the pipeline refuses instead of generating from fabricated context."""
+        self._patch_pipeline_loaders()
+
+        mock_dense.return_value = [
+            {
+                "id": "q_fake",
+                "text": "نص مختلق",
+                "metadata": {
+                    "source_tag": "Q 999:999",  # not in canonical corpus
+                    "corpus": "quran",
+                    "text_ar": "نص مختلق",
+                    "text_en": "Fabricated text",
+                },
+                "distance": 0.1,
+            },
+        ]
+        mock_gen.return_value = "should never be used"
+
+        pipeline = PipelineService(phase=1)
+        result = pipeline.run(query="test", language="en")
+
+        self.assertIn("do not have a grounded source", result["answer"].lower())
+        self.assertEqual(result["sources"], [])
+        mock_gen.assert_not_called()
+
+    @patch('qa.pipeline.generate')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
+    def test_empty_llm_answer_becomes_friendly_message(self, mock_dense, mock_gen):
+        """An empty LLM response must still produce a readable chat answer."""
+        self._patch_pipeline_loaders()
+
+        mock_dense.return_value = [
+            {
+                "id": "q_2_153",
+                "text": SAMPLE_QURAN[1]["text_ar"],
+                "metadata": {
+                    "source_tag": "Q 2:153",
+                    "corpus": "quran",
+                    "text_ar": SAMPLE_QURAN[1]["text_ar"],
+                    "text_en": SAMPLE_QURAN[1]["text_en"],
+                },
+                "distance": 0.15,
+            },
+        ]
+        mock_gen.return_value = ""
+
+        pipeline = PipelineService(phase=1)
+        result = pipeline.run(query="What does the Quran say about patience?", language="en")
+
+        self.assertTrue(result["answer"])
+        self.assertIn("Sorry", result["answer"])
+
+    @patch('qa.hallucination_detector.generate')
+    @patch('qa.intent_router.generate')
+    @patch('qa.pipeline.generate')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
+    def test_hallucination_detected_appends_warning(self, mock_dense, mock_gen, mock_intent, mock_halluc):
+        """A positive hallucination verdict annotates the answer and returns
+        string flagged_spans matching the API contract."""
+        self._patch_pipeline_loaders()
+
+        mock_intent.return_value = json.dumps({"type": "quran_verse", "confidence": 0.9})
+        mock_dense.return_value = [
+            {
+                "id": "q_2_153",
+                "text": SAMPLE_QURAN[1]["text_ar"],
+                "metadata": {
+                    "source_tag": "Q 2:153",
+                    "corpus": "quran",
+                    "text_ar": SAMPLE_QURAN[1]["text_ar"],
+                    "text_en": SAMPLE_QURAN[1]["text_en"],
+                },
+                "distance": 0.15,
+            },
+        ]
+        mock_gen.return_value = "An answer citing [Q 9:9] which is not in the context."
+        mock_halluc.return_value = json.dumps({
+            "hallucinated": True,
+            "flagged_spans": [{"text": "[Q 9:9]", "reason": "not in sources"}],
+        })
+
+        pipeline = PipelineService(phase=2)
+        result = pipeline.run(query="What does the Quran say about patience?", language="en")
+
+        self.assertTrue(result["safety"]["hallucination_detected"])
+        self.assertIn("could not be verified", result["answer"])
+        for span in result["safety"]["flagged_spans"]:
+            self.assertIsInstance(span, str)
+        # The safety payload must satisfy the response serializer
+        response_serializer = QueryResponseSerializer(data=result)
+        self.assertTrue(response_serializer.is_valid(), response_serializer.errors)

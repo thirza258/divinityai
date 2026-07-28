@@ -85,7 +85,18 @@ def verify_chunks(chunks: list[dict]) -> list[dict]:
     ``verification_status`` and ``verification_score`` keys.
 
     Chunks without a source_tag get status ``"unknown"``.
+
+    If the canonical corpus is not loaded at all, chunks are marked
+    ``"unknown"`` rather than ``"hallucinated"`` — an unavailable
+    verifier must not condemn every retrieved passage.
     """
+    if not _canonical_corpus:
+        logger.warning("Canonical corpus is empty — marking %d chunks 'unknown'", len(chunks))
+        for chunk in chunks:
+            chunk['verification_status'] = 'unknown'
+            chunk['verification_score'] = 0.0
+        return chunks
+
     for chunk in chunks:
         meta = chunk.get('metadata', {})
         source_tag = meta.get('source_tag', chunk.get('source_tag', ''))

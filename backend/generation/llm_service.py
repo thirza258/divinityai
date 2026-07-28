@@ -41,6 +41,11 @@ OPENROUTER_DEFAULT_MODEL = os.getenv(
 OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "")
 OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "DivinityAI")
 
+# Request timeout (seconds) and retry count for LLM calls.  Without a
+# timeout a hung provider connection blocks the request worker forever.
+OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
+OPENROUTER_MAX_RETRIES = int(os.getenv("OPENROUTER_MAX_RETRIES", "1"))
+
 # ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
@@ -96,6 +101,8 @@ def get_llm(
         api_key=key,
         base_url=url,
         default_headers=extra_headers if extra_headers else None,
+        timeout=OPENROUTER_TIMEOUT,
+        max_retries=OPENROUTER_MAX_RETRIES,
     )
     return llm
 
@@ -125,6 +132,25 @@ def get_cached_llm(
         base_url=base_url,
     )
     return _llm
+
+
+def _content_to_text(content: Any) -> str:
+    """Normalize LangChain message content to a plain string.
+
+    ``response.content`` is typed ``str | list`` — some models return a
+    list of content blocks.  Callers (and the API contract) expect ``str``.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                parts.append(block.get("text", ""))
+        return "".join(parts)
+    return "" if content is None else str(content)
 
 
 def generate(
@@ -182,7 +208,7 @@ def generate(
     t0 = time.time()
     response = llm.invoke(messages)
     elapsed = time.time() - t0
-    content = response.content
+    content = _content_to_text(response.content)
     if not content:
         logger.warning(
             "LLM returned empty content (model=%s, elapsed=%.2fs). "
@@ -253,6 +279,6 @@ def generate_with_history(
         return llm.stream(langchain_messages)
 
     response = llm.invoke(langchain_messages)
-    return response.content
+    return _content_to_text(response.content)
 
 

@@ -1,8 +1,11 @@
 """Unit tests for retrieval — citation verifier + RRF fusion."""
 
+from unittest.mock import patch
+
 from django.test import TestCase
 
 from corpus.arabic_utils import normalize_arabic
+from retrieval import citation_verifier
 from retrieval.citation_verifier import (
     VerificationResult,
     load_canonical_corpus,
@@ -10,6 +13,7 @@ from retrieval.citation_verifier import (
     verify_chunks,
     get_hallucinated,
 )
+from retrieval.dense_rag import retrieve_dense_all_corpora
 from retrieval.hybrid_retriever import rrf_merge
 
 
@@ -111,6 +115,50 @@ class CitationVerifierTests(TestCase):
         ]
         bad = get_hallucinated(chunks)
         self.assertEqual(bad, ["b", "d"])
+
+
+class VerifyChunksEmptyCorpusTests(TestCase):
+    """An unavailable canonical corpus must not condemn every chunk."""
+
+    def setUp(self):
+        self._saved = citation_verifier._canonical_corpus
+        citation_verifier._canonical_corpus = {}
+
+    def tearDown(self):
+        citation_verifier._canonical_corpus = self._saved
+
+    def test_chunks_marked_unknown_not_hallucinated(self):
+        chunks = [
+            {"id": "a", "metadata": {"source_tag": "Q 2:255", "text_ar": "نص"}},
+        ]
+        result = verify_chunks(chunks)
+        self.assertEqual(result[0]["verification_status"], "unknown")
+
+
+class MaxDistanceFilterTests(TestCase):
+    """Relevance cutoff in retrieve_dense_all_corpora."""
+
+    @patch('retrieval.dense_rag.query_dense')
+    def test_chunks_above_cutoff_dropped(self, mock_qd):
+        near = {"id": "near", "text": "t", "metadata": {}, "distance": 0.3}
+        far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
+        mock_qd.side_effect = [[near], [far]]  # quran, hadith
+        result = retrieve_dense_all_corpora(["q"], max_distance=0.75)
+        self.assertEqual([r["id"] for r in result], ["near"])
+
+    @patch('retrieval.dense_rag.query_dense')
+    def test_all_chunks_irrelevant_returns_empty(self, mock_qd):
+        far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
+        mock_qd.side_effect = [[far], []]
+        result = retrieve_dense_all_corpora(["q"], max_distance=0.75)
+        self.assertEqual(result, [])
+
+    @patch('retrieval.dense_rag.query_dense')
+    def test_none_disables_cutoff(self, mock_qd):
+        far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
+        mock_qd.side_effect = [[far], []]
+        result = retrieve_dense_all_corpora(["q"], max_distance=None)
+        self.assertEqual([r["id"] for r in result], ["far"])
 
 
 class RRFTests(TestCase):
