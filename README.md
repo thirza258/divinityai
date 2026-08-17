@@ -126,7 +126,8 @@ python manage.py ingest_hadith --collections bukhari,muslim
 
 ### 5. Open the App
 
-- **Frontend**: http://localhost:5173
+- **Landing page**: http://localhost:5173
+- **Chat**: http://localhost:5173/chat.html
 - **Backend API**: http://localhost:8000/api/v1/health
 
 ---
@@ -248,6 +249,8 @@ divinityai/
 │   ├── retrieval/            # Hybrid retrieval (BM25 + dense)
 │   └── router/               # ChromaDB CRUD views
 ├── frontend/
+│   ├── index.html            # Landing page (static HTML, SEO entry point)
+│   ├── chat.html             # Chat app entry
 │   └── src/
 │       ├── App.jsx           # Chatbot UI
 │       └── index.css         # Tailwind + Islamic theme
