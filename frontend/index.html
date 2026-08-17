@@ -2,18 +2,509 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DivinityAI — Quran & Hadith QA</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- ================================================================ -->
+    <!-- SEO                                                              -->
+    <!-- ================================================================ -->
+    <title>DivinityAI — Quran &amp; Hadith Answers With Citations</title>
+    <meta
+      name="description"
+      content="Ask questions about the Quran and Hadith and get answers grounded only in the sources, with a verifiable citation on every claim. Arabic, English, Indonesian."
+    />
+    <link rel="canonical" href="https://divi.nevatal.tech/" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#1b5e20" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DivinityAI" />
+    <meta property="og:url" content="https://divi.nevatal.tech/" />
+    <meta property="og:title" content="DivinityAI — Quran &amp; Hadith Answers With Citations" />
+    <meta
+      property="og:description"
+      content="Answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="DivinityAI — Quran &amp; Hadith Answers With Citations" />
+    <meta
+      name="twitter:description"
+      content="Answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
+    />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&display=swap"
       rel="stylesheet"
     />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "DivinityAI",
+        "url": "https://divi.nevatal.tech/",
+        "applicationCategory": "ReferenceApplication",
+        "operatingSystem": "Any (web browser)",
+        "description": "A retrieval-augmented question answering system that answers questions using only the Quran and authenticated Hadith collections, attaching a verifiable source citation to every claim.",
+        "inLanguage": ["en", "ar", "id"],
+        "featureList": [
+          "Answers grounded exclusively in the Quran and authenticated Hadith",
+          "Verifiable source tag on every claim",
+          "Deterministic citation verification",
+          "Off-domain and fatwa-boundary safeguards",
+          "Arabic, English and Indonesian input"
+        ]
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does DivinityAI issue fatwas?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. DivinityAI presents what the sources say, not rulings. When a question touches sensitive jurisprudence, the answer carries a disclaimer directing you to a qualified scholar."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Where do the answers come from?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Only from the retrieved passages of the Quran and the authenticated Hadith collections in its corpus. The language model never answers from its own training data — if it is not in the corpus, it is not said."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do the tags [Q 2:255] and [C Bukhari/52] mean?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "[Q 2:255] points to a Quranic verse by surah and ayah number. [C Bukhari/52] points to a hadith by collection name and narration number. Both can be checked against the source text shown with the answer."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which languages can I ask in?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Arabic, English and Indonesian. Quranic and Hadith passages are shown in Arabic alongside their translation."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens when there is no grounded source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It says so. An evidence sufficiency check runs before generation, and questions outside the corpus are declined rather than answered from guesswork."
+            }
+          }
+        ]
+      }
+    </script>
   </head>
-  <body class="bg-[#f5f0e8] text-[#3d3226] min-h-screen">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+
+  <body class="bg-dune-100 text-dune-900 min-h-screen font-[Georgia]">
+    <!-- ================================================================ -->
+    <!-- BANNER                                                           -->
+    <!-- ================================================================ -->
+    <header class="banner-pattern text-white relative overflow-hidden">
+      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent"></div>
+      <div class="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent"></div>
+      <div class="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-gold-500/20 via-gold-500/40 to-gold-500/20"></div>
+      <div class="absolute right-0 top-0 bottom-0 w-2 bg-gradient-to-b from-gold-500/20 via-gold-500/40 to-gold-500/20"></div>
+
+      <div class="max-w-5xl mx-auto px-4 py-6 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-center sm:text-left">
+          <div class="flex items-center justify-center sm:justify-start gap-3 mb-1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
+              <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+            </svg>
+            <span class="text-2xl font-bold tracking-wide drop-shadow-lg">DivinityAI</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.5 0 3-.3 4.3-.9-2.5-1.5-4.3-4.3-4.3-7.6s1.8-6.1 4.3-7.6C15 2.3 13.5 2 12 2z" />
+            </svg>
+          </div>
+          <p class="text-gold-300 text-xs tracking-[0.2em]">GROUNDED QURAN &amp; HADITH Q&amp;A</p>
+        </div>
+
+        <nav class="flex items-center gap-4 text-sm flex-wrap justify-center" aria-label="Primary">
+          <a href="#how-it-works" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">How it works</a>
+          <a href="#corpus" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Corpus</a>
+          <a href="#faq" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">FAQ</a>
+          <a
+            href="/chat.html"
+            class="bg-gold-500 hover:bg-gold-600 text-islam-900 px-4 py-2 font-bold tracking-wide border border-gold-600 transition-colors"
+            >Get started</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <div class="bg-gradient-to-r from-islam-700 via-islam-600 to-islam-700 text-gold-100 px-4 py-2 text-center text-xs tracking-wide border-y border-gold-600/50">
+      <div class="max-w-5xl mx-auto flex items-center justify-center gap-x-6 gap-y-1 flex-wrap">
+        <span>Sources: Quran &amp; Authentic Hadith</span>
+        <span class="hidden sm:inline">&bull;</span>
+        <span>Not a fatwa-issuing system</span>
+        <span class="hidden sm:inline">&bull;</span>
+        <span>AR / EN / ID</span>
+      </div>
+    </div>
+
+    <main>
+      <!-- ============================================================== -->
+      <!-- HERO                                                            -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 py-12 md:py-16 text-center">
+        <span class="arabic text-3xl text-gold-500 select-none block mb-4">&#xFDFD;</span>
+
+        <h1 class="text-3xl md:text-5xl font-bold text-islam-800 leading-tight mb-4">
+          Quran and Hadith answers you can check for yourself
+        </h1>
+
+        <p class="text-base md:text-lg text-dune-700 max-w-2xl mx-auto leading-relaxed">
+          General-purpose chatbots invent surah numbers, misattribute narrators and blur
+          similar-sounding narrations. DivinityAI answers only from a locked corpus of the
+          Quran and authenticated Hadith, and tags every claim with the exact verse or
+          narration it came from &mdash; so you never have to take its word for it.
+        </p>
+
+        <p class="mt-6 text-gold-800 text-lg italic">
+          &ldquo;If it&rsquo;s not in the corpus, don&rsquo;t say it.&rdquo;
+        </p>
+
+        <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <a
+            href="/chat.html"
+            class="bg-gold-500 hover:bg-gold-600 text-islam-900 px-8 py-3 font-bold tracking-wide border border-gold-600 transition-colors"
+            >Get started</a
+          >
+          <a
+            href="#how-it-works"
+            class="hover:bg-dune-200 text-islam-800 px-8 py-3 font-bold tracking-wide border border-islam-600 transition-colors"
+            >See how it works</a
+          >
+        </div>
+
+        <div class="star-divider mt-12 max-w-md mx-auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- CITATIONS                                                       -->
+      <!-- ============================================================== -->
+      <section id="citations" class="max-w-5xl mx-auto px-4 py-10">
+        <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+          Every claim carries a source tag
+        </h2>
+        <p class="text-dune-700 leading-relaxed max-w-3xl mb-8">
+          Answers are written in citation-bearing sentences. A Quranic claim is tagged by surah
+          and ayah, a Hadith claim by collection and narration number, and the full source
+          passage &mdash; Arabic and translation &mdash; is shown beneath the answer so you can
+          verify it without leaving the page.
+        </p>
+
+        <div class="geometric-border bg-dune-50 p-5 md:p-6 max-w-3xl mx-auto md:mx-0">
+          <p class="text-sm leading-relaxed text-dune-900">
+            The Quran emphasises patience (sabr) and pairs it with prayer as a source of help
+            <span class="inline-block bg-gold-100 text-gold-800 px-1.5 py-0.5 rounded text-xs font-semibold mx-0.5 border border-gold-300">[Q 2:153]</span>,
+            and the Prophet described patience as illumination
+            <span class="inline-block bg-gold-100 text-gold-800 px-1.5 py-0.5 rounded text-xs font-semibold mx-0.5 border border-gold-300">[C Muslim/223]</span>.
+          </p>
+          <div class="mt-4 bg-dune-100 border border-dune-200 p-3">
+            <p class="text-gold-700 font-semibold text-xs">
+              Q 2:153 <span class="text-dune-400">(exact match)</span>
+            </p>
+            <p class="arabic text-dune-700 mt-1 text-base">
+              &#x64A;&#x627; &#x623;&#x64A;&#x651;&#x647;&#x627; &#x627;&#x644;&#x651;&#x630;&#x64A;&#x646; &#x622;&#x645;&#x646;&#x648;&#x627; &#x627;&#x633;&#x62A;&#x639;&#x64A;&#x646;&#x648;&#x627; &#x628;&#x627;&#x644;&#x635;&#x651;&#x628;&#x631; &#x648;&#x627;&#x644;&#x635;&#x651;&#x644;&#x627;&#x629;
+            </p>
+            <p class="text-dune-600 text-xs mt-1">
+              &ldquo;O you who have believed, seek help through patience and prayer.&rdquo;
+            </p>
+          </div>
+          <p class="mt-3 text-xs text-dune-500 italic">
+            Illustrative example of the answer format.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- HOW IT WORKS                                                    -->
+      <!-- ============================================================== -->
+      <section id="how-it-works" class="bg-dune-50 border-y border-dune-300 py-12 mt-6">
+        <div class="max-w-5xl mx-auto px-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+            How a question becomes a cited answer
+          </h2>
+          <p class="text-dune-700 leading-relaxed max-w-3xl mb-8">
+            Your question passes through a retrieval pipeline before a single word is generated.
+            Each stage narrows what the model is allowed to see and say.
+          </p>
+
+          <ol class="grid gap-4 md:grid-cols-2 list-none">
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">1. Intent routing</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                The question is classified &mdash; verse lookup, hadith question, fiqh guidance,
+                calculation, or out of domain &mdash; and routed accordingly.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">2. Scope guard</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                Questions the corpus cannot answer are declined with a plain explanation instead
+                of an improvised answer.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">3. Query rewriting</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                A hypothetical answer and sub-questions are drafted to widen recall, so a
+                plainly worded question still reaches the right passages.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">4. Retrieval</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                Embeddings match the question against the Quran and Hadith collections, one
+                ayah or one narration per chunk.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">5. Citation verification</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                Each retrieved passage is matched back to the canonical text by exact, then
+                normalised, then fuzzy comparison &mdash; ordinary code, not model judgement.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <h3 class="font-bold text-islam-700 mb-1">6. Grounded generation</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                The answer is written from the retrieved passages alone. For fiqh questions an
+                evidence sufficiency check runs first.
+              </p>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4 md:col-span-2">
+              <h3 class="font-bold text-islam-700 mb-1">7. Safety layer</h3>
+              <p class="text-sm text-dune-700 leading-relaxed">
+                The finished answer is checked back against its sources for unsupported
+                statements, and questions touching sensitive rulings receive a scholar
+                disclaimer before the answer reaches you.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- SAFEGUARDS                                                      -->
+      <!-- ============================================================== -->
+      <section id="safeguards" class="max-w-5xl mx-auto px-4 py-12">
+        <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+          Four layers against hallucination
+        </h2>
+        <p class="text-dune-700 leading-relaxed max-w-3xl mb-6">
+          No single guard is trusted on its own. A fabrication has to pass all four to reach you.
+        </p>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border border-dune-300 min-w-[36rem]">
+            <caption class="sr-only">Hallucination safeguards in DivinityAI</caption>
+            <thead class="bg-islam-600 text-gold-100">
+              <tr>
+                <th scope="col" class="text-left px-4 py-2 font-semibold">Layer</th>
+                <th scope="col" class="text-left px-4 py-2 font-semibold">What it does</th>
+              </tr>
+            </thead>
+            <tbody class="bg-dune-50">
+              <tr class="border-t border-dune-300">
+                <th scope="row" class="text-left px-4 py-3 font-semibold text-islam-700 align-top">
+                  Corpus lock
+                </th>
+                <td class="px-4 py-3 text-dune-700">
+                  The model only ever sees retrieved passages, never its own training memory of
+                  scripture.
+                </td>
+              </tr>
+              <tr class="border-t border-dune-300">
+                <th scope="row" class="text-left px-4 py-3 font-semibold text-islam-700 align-top">
+                  Source tagging
+                </th>
+                <td class="px-4 py-3 text-dune-700">
+                  Every chunk carries a verifiable tag before it is used, so a claim without a
+                  tag has nowhere to hide.
+                </td>
+              </tr>
+              <tr class="border-t border-dune-300">
+                <th scope="row" class="text-left px-4 py-3 font-semibold text-islam-700 align-top">
+                  Citation verifier
+                </th>
+                <td class="px-4 py-3 text-dune-700">
+                  Deterministic string matching confirms the cited text really is the cited
+                  passage &mdash; exact, then normalised, then fuzzy.
+                </td>
+              </tr>
+              <tr class="border-t border-dune-300">
+                <th scope="row" class="text-left px-4 py-3 font-semibold text-islam-700 align-top">
+                  Post-generation check
+                </th>
+                <td class="px-4 py-3 text-dune-700">
+                  The written answer is re-read against its sources and unsupported spans are
+                  flagged.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- CORPUS                                                          -->
+      <!-- ============================================================== -->
+      <section id="corpus" class="bg-dune-50 border-y border-dune-300 py-12">
+        <div class="max-w-5xl mx-auto px-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+            What it is allowed to draw on
+          </h2>
+          <p class="text-dune-700 leading-relaxed max-w-3xl mb-6">
+            The knowledge base is closed and canonical. The Quran is indexed one ayah at a time
+            from the King Fahd Complex Uthmani text; Hadith are indexed one narration at a time
+            from the six major collections.
+          </p>
+
+          <ul class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 list-none">
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Al-Quran</span>
+              <span class="text-sm text-dune-600">6,236 ayahs, Arabic with translation</span>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Sahih al-Bukhari</span>
+              <span class="text-sm text-dune-600">~7,563 narrations</span>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Sahih Muslim</span>
+              <span class="text-sm text-dune-600">~7,190 narrations</span>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Sunan Abu Dawud</span>
+              <span class="text-sm text-dune-600">~5,274 narrations</span>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Jami&rsquo; at-Tirmidhi</span>
+              <span class="text-sm text-dune-600">~3,956 narrations</span>
+            </li>
+            <li class="bg-dune-100 border border-dune-300 p-4">
+              <span class="block font-bold text-islam-700">Sunan an-Nasa&rsquo;i &amp; Ibn Majah</span>
+              <span class="text-sm text-dune-600">~5,762 and ~4,341 narrations</span>
+            </li>
+          </ul>
+
+          <p class="text-dune-700 leading-relaxed max-w-3xl mt-6">
+            Ask in <strong>Arabic</strong>, <strong>English</strong> or
+            <strong>Indonesian</strong>. Arabic diacritics and spelling variants are normalised
+            before matching, so a question typed without tashkeel still finds the verse.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- FAQ                                                             -->
+      <!-- ============================================================== -->
+      <section id="faq" class="max-w-5xl mx-auto px-4 py-12">
+        <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-6">
+          Frequently asked questions
+        </h2>
+
+        <dl class="space-y-5 max-w-3xl">
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">Does DivinityAI issue fatwas?</dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              No. DivinityAI presents what the sources say, not rulings. When a question touches
+              sensitive jurisprudence, the answer carries a disclaimer directing you to a
+              qualified scholar.
+            </dd>
+          </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">Where do the answers come from?</dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              Only from the retrieved passages of the Quran and the authenticated Hadith
+              collections in its corpus. The language model never answers from its own training
+              data &mdash; if it is not in the corpus, it is not said.
+            </dd>
+          </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">
+              What do the tags [Q 2:255] and [C Bukhari/52] mean?
+            </dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              [Q 2:255] points to a Quranic verse by surah and ayah number. [C Bukhari/52] points
+              to a hadith by collection name and narration number. Both can be checked against
+              the source text shown with the answer.
+            </dd>
+          </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">Which languages can I ask in?</dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              Arabic, English and Indonesian. Quranic and Hadith passages are shown in Arabic
+              alongside their translation.
+            </dd>
+          </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">
+              What happens when there is no grounded source?
+            </dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              It says so. An evidence sufficiency check runs before generation, and questions
+              outside the corpus are declined rather than answered from guesswork.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- CLOSING CTA                                                     -->
+      <!-- ============================================================== -->
+      <section class="banner-pattern text-white py-12 border-y-2 border-gold-600/50">
+        <div class="max-w-3xl mx-auto px-4 text-center">
+          <h2 class="text-2xl md:text-3xl font-bold mb-3">Ask your first question</h2>
+          <p class="text-gold-200 leading-relaxed mb-6">
+            Type a question about the Quran or Hadith and read the sources for yourself.
+          </p>
+          <a
+            href="/chat.html"
+            class="inline-block bg-gold-500 hover:bg-gold-600 text-islam-900 px-8 py-3 font-bold tracking-wide border border-gold-600 transition-colors"
+            >Get started</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <!-- ================================================================ -->
+    <!-- FOOTER                                                           -->
+    <!-- ================================================================ -->
+    <footer class="bg-dune-100 text-center py-8 px-4 text-xs text-dune-600">
+      <div class="star-divider max-w-md mx-auto mb-4">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+        </svg>
+      </div>
+      <p class="tracking-[0.2em] font-semibold text-dune-700 mb-2">DIVINITYAI</p>
+      <p class="mb-1">Grounded in the Quran &bull; Authenticated Hadith &bull; Verifiable Citations</p>
+      <p class="max-w-xl mx-auto">
+        DivinityAI is <strong>not a fatwa-issuing system</strong>. It presents what the sources
+        say, not rulings. For definitive rulings &mdash; particularly on divorce, inheritance,
+        usury or medical ethics &mdash; consult a qualified scholar.
+      </p>
+    </footer>
+
+    <script type="module" src="/src/landing.js"></script>
   </body>
 </html>

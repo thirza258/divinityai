@@ -200,7 +200,9 @@ export default function App() {
 
           {/* Title */}
           <h1 className="text-4xl md:text-5xl font-bold tracking-wide mb-1 font-[Georgia] drop-shadow-lg">
-            {APP_TITLE}
+            <a href="/" className="hover:text-gold-300 transition-colors">
+              {APP_TITLE}
+            </a>
           </h1>
           <p className="text-gold-300 text-sm tracking-[0.15em] font-[Georgia]">
             {APP_SUBTITLE}

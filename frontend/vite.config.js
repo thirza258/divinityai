@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
+import { resolve } from "path";
 import process from "process";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -19,6 +20,15 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
     ],
+    // Two entry points: the static landing page and the React chat app.
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(process.cwd(), "index.html"),
+          chat: resolve(process.cwd(), "chat.html"),
+        },
+      },
+    },
     server: {
       port: 5173,
       host: true,
