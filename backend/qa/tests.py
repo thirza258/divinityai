@@ -89,9 +89,13 @@ class ScopeGuardTests(TestCase):
         self.assertIn('outside this scope', result['message'])
 
     def test_rejects_low_confidence(self):
-        result = check_scope('hadith', 0.5)
+        result = check_scope('hadith', 0.3)
         self.assertFalse(result['allowed'])
         self.assertIn('not confident', result['message'])
+
+    def test_allows_fallback_confidence(self):
+        result = check_scope('hadith', 0.5)
+        self.assertTrue(result['allowed'])
 
     def test_allows_valid_intent(self):
         result = check_scope('quran_verse', 0.85)

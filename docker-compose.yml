@@ -14,7 +14,7 @@
 #
 # External dependencies (run on host):
 #   Ollama     — Embedding API               → host.docker.internal:11434
-#   ChromaDB   — Vector database             → host.docker.internal:8040
+#   ChromaDB   — Vector database             → host.docker.internal:5050
 #
 # Usage:
 #   docker compose up -d
@@ -36,13 +36,15 @@ services:
       - DEBUG=True
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,nginx}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_DEFAULT_MODEL=${OPENROUTER_DEFAULT_MODEL:-google/gemini-2.5-flash}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-embeddinggemma}
       - CHROMA_CLIENT_SERVER_MODE=True
       - CHROMA_HOST=${CHROMA_HOST:-host.docker.internal}
-      - CHROMA_PORT=${CHROMA_PORT:-8040}
+      - CHROMA_PORT=${CHROMA_PORT:-5050}
       - QURAN_COLLECTION=${QURAN_COLLECTION:-quran_collection}
       - HADITH_COLLECTION=${HADITH_COLLECTION:-hadith_collection}
       - RAG_PHASE=${RAG_PHASE:-2}
@@ -52,7 +54,7 @@ services:
       - OPENROUTER_HALLUCINATION_MODEL=${OPENROUTER_HALLUCINATION_MODEL:-meta-llama/llama-3.3-70b-instruct}
     volumes:
       - ./backend:/app/backend
-    restart: unless-stopped
+    restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -75,10 +77,11 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
+      - ./frontend/chat.html:/app/chat.html
       - ./frontend/vite.config.js:/app/vite.config.js
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: always
 
   # ---------------------------------------------------------------------------
   # Nginx — Reverse Proxy
@@ -93,4 +96,4 @@ services:
     depends_on:
       - backend
       - frontend
-    restart: unless-stopped
+    restart: always

@@ -38,13 +38,13 @@ The ChromaDB server is hosted outside the application container.
 If running directly on the host:
 
 ```text
-http://localhost:8040
+http://localhost:5050
 ```
 
 If the application runs inside Docker:
 
 ```text
-http://host.docker.internal:8040
+http://host.docker.internal:5050
 ```
 
 ---
@@ -82,7 +82,7 @@ embedding:
   model: embeddinggemma
 
 chromadb:
-  host: http://host.docker.internal:8040
+  host: http://host.docker.internal:5050
   collections:
     quran: quran_collection
     hadith: hadith_collection

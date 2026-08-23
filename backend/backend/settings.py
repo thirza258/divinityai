@@ -194,12 +194,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Phase: 1 = core retrieval + generation, 2 = full pipeline with intent/safety
 RAG_PHASE = int(os.getenv("RAG_PHASE", "2"))
 
-# Relevance cutoff for dense retrieval (cosine distance, 0 = identical,
-# 2 = opposite). Chunks above this distance are dropped so unrelated
-# passages never reach generation; if nothing passes, the pipeline answers
-# "I do not have a grounded source..." instead of hallucinating.
-# Tune against real queries; set empty to disable.
-_rag_max_distance = os.getenv("RAG_MAX_DISTANCE", "0.75")
+# Relevance cutoff for dense retrieval. Chunks above this distance are
+# dropped so unrelated passages never reach generation; if nothing passes,
+# the pipeline answers "I do not have a grounded source..." instead of
+# hallucinating.  Disabled by default: the ingest collections
+# (ingest_divinityai_to_chroma.py) use Chroma's default l2 space, not
+# cosine, so a hardcoded default would drop legitimate matches.
+# Tune against real query distances (l2); set empty to disable.
+_rag_max_distance = os.getenv("RAG_MAX_DISTANCE", "")
 RAG_MAX_DISTANCE = float(_rag_max_distance) if _rag_max_distance else None
 
 # Ollama embedding configuration
@@ -296,6 +298,8 @@ CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS") or [
     "http://127.0.0.1:5899",
     "https://divi.nevatal.tech",
     "http://divi.nevatal.tech",
+    "https://muslim.nevatal.tech",
+    "http://muslim.nevatal.tech",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

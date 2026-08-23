@@ -17,9 +17,10 @@ import time
 from typing import List
 
 import requests
+from chromadb.errors import NotFoundError
 from django.conf import settings
 
-from chroma.chroma_utils import get_or_create_collection
+from chroma.chroma_utils import get_chroma_client
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +66,27 @@ class OllamaEmbeddingFunction:
 # Embedding helpers
 # ---------------------------------------------------------------------------
 
-def _embed_single(text: str) -> List[float]:
-    """Call Ollama embedding API for a single text."""
-    url = f"{OLLAMA_BASE_URL}/api/embeddings"
-    payload = {"model": OLLAMA_EMBED_MODEL, "prompt": text}
+def _embed_batch(texts: List[str]) -> List[List[float]]:
+    """Call Ollama's batch embedding API for a list of texts.
+
+    Uses ``/api/embed`` with ``truncate=True`` — the exact request the
+    ingest script makes — so query vectors land in the same space as the
+    stored document embeddings.  Vectors are returned as-is (no
+    post-processing) to match the ingest side.
+    """
+    url = f"{OLLAMA_BASE_URL}/api/embed"
+    payload = {"model": OLLAMA_EMBED_MODEL, "input": texts, "truncate": True}
 
     for attempt in range(3):
         try:
             resp = requests.post(url, json=payload, timeout=30)
             resp.raise_for_status()
-            return resp.json()["embedding"]
+            embeddings = resp.json()["embeddings"]
+            if len(embeddings) != len(texts):
+                raise ValueError(
+                    f"Ollama returned {len(embeddings)} embeddings for {len(texts)} inputs"
+                )
+            return embeddings
         except (requests.RequestException, KeyError, ValueError) as exc:
             if attempt == 2:
                 logger.error("Ollama embedding failed after 3 attempts: %s", exc)
@@ -89,20 +101,11 @@ def _embed_single(text: str) -> List[float]:
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """Embed a list of texts using Ollama embeddinggemma.
 
-    Ollama does not support batching natively, so we embed texts
-    sequentially.  For large ingestion jobs, this is acceptable
-    since Ollama runs locally and each call is fast.
+    Sends all texts in one ``/api/embed`` batch request and returns the
+    vectors exactly as Ollama returns them, matching how the ingest
+    script embedded the stored documents.
     """
-    embeddings = []
-    for text in texts:
-        emb = _embed_single(text)
-        # Normalize to unit vector for cosine similarity
-        norm = sum(x * x for x in emb) ** 0.5
-        if norm > 0:
-            embeddings.append([x / norm for x in emb])
-        else:
-            embeddings.append(emb)
-    return embeddings
+    return _embed_batch(texts)
 
 
 # ---------------------------------------------------------------------------
@@ -174,8 +177,17 @@ def query_dense(
     # Pre-embed with Ollama (same function used at ingestion time)
     query_embedding = embed_texts([query_text])[0]
 
-    # Get collection WITHOUT embedding function — use whatever is persisted
-    collection = get_or_create_collection(name=collection_name)
+    # Get the existing collection WITHOUT any embedding function — the
+    # ingest created it that way, and we pass pre-embedded query vectors
+    # ourselves.  Never auto-create: a missing collection means the ingest
+    # has not run against this Chroma, which should fail loudly.
+    try:
+        collection = get_chroma_client().get_collection(name=collection_name)
+    except (NotFoundError, ValueError) as exc:
+        raise RuntimeError(
+            f"Chroma collection '{collection_name}' not found — run "
+            "ingest_divinityai_to_chroma.py against this Chroma server first."
+        ) from exc
 
     print(f"[dense_rag] querying '{collection_name}' (k={k}): '{query_text[:60]}...'", flush=True)
     logger.info("querying '%s' k=%d query='%s'", collection_name, k, query_text[:60])
@@ -183,6 +195,7 @@ def query_dense(
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=k,
+        include=["documents", "metadatas", "distances"],
         where=where_filter,
     )
 

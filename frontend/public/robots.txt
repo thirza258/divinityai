@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://divi.nevatal.tech/sitemap.xml
+Sitemap: https://muslim.nevatal.tech/sitemap.xml

@@ -24,7 +24,7 @@ def check_scope(intent: str, confidence: float) -> dict:
     if intent == 'off_domain':
         return {'allowed': False, 'message': OFF_DOMAIN_MESSAGE}
 
-    if confidence < 0.6:
+    if confidence < 0.4:
         return {'allowed': False, 'message': LOW_CONFIDENCE_MESSAGE}
 
     return {'allowed': True, 'message': ''}

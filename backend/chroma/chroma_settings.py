@@ -20,7 +20,7 @@ CHROMA_CLIENT_SERVER_MODE = os.getenv("CHROMA_CLIENT_SERVER_MODE", "False").lowe
 # Client-server mode settings (used when CHROMA_CLIENT_SERVER_MODE=True)
 # ---------------------------------------------------------------------------
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
-CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8040"))
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", "5050"))
 CHROMA_SSL = os.getenv("CHROMA_SSL", "False").lower() in ("true", "1", "yes")
 
 # ---------------------------------------------------------------------------
