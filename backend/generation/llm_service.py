@@ -210,11 +210,23 @@ def generate(
     elapsed = time.time() - t0
     content = _content_to_text(response.content)
     if not content:
+        # finish_reason distinguishes the causes that all look alike from
+        # here: a provider content filter, a length cut-off, or a reasoning-
+        # only completion.  Without it an empty answer is undiagnosable.
+        metadata = getattr(response, "response_metadata", {})
         logger.warning(
-            "LLM returned empty content (model=%s, elapsed=%.2fs). "
+            "LLM returned empty content (model=%s, elapsed=%.2fs, "
+            "finish_reason=%s, metadata=%s). "
             "Check API key validity, rate limits, and model availability.",
             model or OPENROUTER_DEFAULT_MODEL,
             elapsed,
+            metadata.get("finish_reason"),
+            metadata,
+        )
+        print(
+            f"[llm] EMPTY content from {model or OPENROUTER_DEFAULT_MODEL} — "
+            f"finish_reason={metadata.get('finish_reason')} metadata={metadata}",
+            flush=True,
         )
     print(f"[llm] generation completed in {elapsed:.2f}s", flush=True)
     logger.info("generation completed in %.2fs", elapsed)

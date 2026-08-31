@@ -27,9 +27,9 @@ def _check_ollama() -> dict:
     start = time.monotonic()
     OLLAMA_EMBED_MODEL = "unknown"
     try:
-        from retrieval.dense_rag import _embed_single, OLLAMA_EMBED_MODEL
+        from retrieval.dense_rag import embed_texts, OLLAMA_EMBED_MODEL
 
-        embedding = _embed_single("test")
+        embedding = embed_texts(["test"])[0]
         latency_ms = round((time.monotonic() - start) * 1000)
         if embedding and len(embedding) > 0:
             return {

@@ -13,7 +13,9 @@ from qa.serializers import (
     SafetyResultSerializer,
 )
 from qa.intent_router import classify_intent
+from qa import pipeline as pipeline_module
 from qa.pipeline import PipelineService
+from retrieval import citation_verifier
 from retrieval.citation_verifier import load_canonical_corpus
 
 # ---------------------------------------------------------------------------
@@ -88,10 +90,16 @@ class ScopeGuardTests(TestCase):
         self.assertFalse(result['allowed'])
         self.assertIn('outside this scope', result['message'])
 
-    def test_rejects_low_confidence(self):
+    def test_allows_low_confidence_in_domain(self):
+        """A shaky intent score must not refuse an in-domain query —
+        retrieval and grounded generation decide instead."""
         result = check_scope('hadith', 0.3)
-        self.assertFalse(result['allowed'])
-        self.assertIn('not confident', result['message'])
+        self.assertTrue(result['allowed'])
+
+    def test_allows_unsure_off_domain(self):
+        """An off-domain guess the classifier is unsure of goes to retrieval."""
+        result = check_scope('off_domain', 0.2)
+        self.assertTrue(result['allowed'])
 
     def test_allows_fallback_confidence(self):
         result = check_scope('hadith', 0.5)
@@ -262,6 +270,76 @@ class SerializerTests(TestCase):
         self.assertTrue(serializer.is_valid())
         self.assertFalse(serializer.validated_data['hallucination_detected'])
         self.assertEqual(serializer.validated_data['flagged_spans'], [])
+
+
+# =========================================================================
+# Unit tests: Canonical corpus loading
+# =========================================================================
+
+class FakeCollection:
+    """Minimal stand-in for a ChromaDB collection that pages."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = []
+
+    def get(self, include=None, limit=None, offset=0):
+        self.calls.append({'include': include, 'limit': limit, 'offset': offset})
+        page = self.rows[offset:offset + limit]
+        return {
+            'ids': [r['id'] for r in page],
+            'metadatas': [r['meta'] for r in page],
+        }
+
+
+class CanonicalLoadTests(TestCase):
+    """The canonical load runs on the first request — it must stay bounded."""
+
+    def setUp(self):
+        self._saved_corpus = citation_verifier._canonical_corpus
+        self._saved_markers = citation_verifier._loaded_markers
+        citation_verifier._canonical_corpus = {}
+        citation_verifier._loaded_markers = set()
+
+    def tearDown(self):
+        citation_verifier._canonical_corpus = self._saved_corpus
+        citation_verifier._loaded_markers = self._saved_markers
+
+    def _rows(self, n):
+        return [
+            {
+                'id': f'q_2_{i}',
+                'meta': {'surah_no': 2, 'ayah_no_surah': i, 'ayah_ar': f'AR{i}'},
+            }
+            for i in range(1, n + 1)
+        ]
+
+    def test_pages_through_whole_collection(self):
+        collection = FakeCollection(self._rows(7))
+        with patch.object(pipeline_module, 'CANONICAL_PAGE_SIZE', 3):
+            count = pipeline_module._load_collection_canonical(
+                collection, 'quran_collection'
+            )
+
+        self.assertEqual(count, 7)
+        self.assertEqual(len(citation_verifier._canonical_corpus), 7)
+        self.assertEqual(citation_verifier._canonical_corpus['Q 2:1'], 'AR1')
+        # 3 + 3 + 1 — the short final page ends the loop without a further call.
+        self.assertEqual([c['offset'] for c in collection.calls], [0, 3, 6])
+
+    def test_fetches_metadatas_only(self):
+        """Document bodies are never transferred — the loader reads metadata."""
+        collection = FakeCollection(self._rows(2))
+        pipeline_module._load_collection_canonical(collection, 'quran_collection')
+        self.assertEqual(collection.calls[0]['include'], ['metadatas'])
+
+    def test_empty_collection_reads_nothing(self):
+        collection = FakeCollection([])
+        count = pipeline_module._load_collection_canonical(
+            collection, 'quran_collection'
+        )
+        self.assertEqual(count, 0)
+        self.assertEqual(len(collection.calls), 1)
 
 
 # =========================================================================
@@ -443,6 +521,47 @@ class PipelineIntegrationTests(TestCase):
 
         # LLM calls should be tracked
         self.assertGreaterEqual(result["pipeline_meta"]["llm_calls"], 2)
+
+    @patch('qa.pipeline.generate')
+    @patch('qa.pipeline.retrieve_dense_all_corpora')
+    @patch('qa.query_rewriter.generate')
+    @patch('qa.intent_router.generate')
+    @patch('qa.hallucination_detector.generate')
+    def test_low_confidence_intent_still_answers(
+        self, mock_halluc, mock_intent, mock_rewrite, mock_dense, mock_gen
+    ):
+        """A low-confidence intent must retrieve and answer, not refuse.
+
+        Previously the scope guard returned "I'm not confident I can answer"
+        below 0.4 and never reached retrieval.
+        """
+        self._patch_pipeline_loaders()
+
+        mock_intent.return_value = json.dumps({"type": "hadith", "confidence": 0.3})
+        mock_rewrite.return_value = "A hypothetical passage."
+        mock_dense.return_value = [
+            {
+                "id": "q_2_255",
+                "text": SAMPLE_QURAN[0]["text_ar"],
+                "metadata": {
+                    "source_tag": "Q 2:255",
+                    "corpus": "quran",
+                    "text_ar": SAMPLE_QURAN[0]["text_ar"],
+                    "text_en": SAMPLE_QURAN[0]["text_en"],
+                },
+                "distance": 0.12,
+            },
+        ]
+        mock_gen.return_value = MOCK_GENERATED_ANSWER
+        mock_halluc.return_value = json.dumps({"hallucinated": False, "flagged_spans": []})
+
+        pipeline = PipelineService(phase=2)
+        result = pipeline.run(query="what is surah al-baqarah", language="en")
+
+        self.assertNotIn("not confident", result["answer"])
+        self.assertEqual(result["answer"], MOCK_GENERATED_ANSWER)
+        self.assertGreater(len(result["sources"]), 0)
+        mock_gen.assert_called_once()
 
     @patch('qa.pipeline.generate')
     @patch('qa.pipeline.retrieve_dense_all_corpora')

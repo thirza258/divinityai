@@ -11,7 +11,12 @@ import time
 from django.conf import settings
 
 from retrieval.citation_verifier import verify_chunks, load_canonical_corpus
-from retrieval.dense_rag import QURAN_COLLECTION, HADITH_COLLECTION, retrieve_dense_all_corpora
+from retrieval.dense_rag import (
+    QURAN_COLLECTION,
+    HADITH_COLLECTION,
+    retrieve_dense_all_corpora,
+    _normalize_metadata,
+)
 from generation.llm_service import generate
 
 logger = logging.getLogger(__name__)
@@ -36,6 +41,50 @@ def _load_canonical() -> None:
         _canonical_loaded = True
 
 
+# Rows per ChromaDB fetch when loading the canonical corpus.
+CANONICAL_PAGE_SIZE = 5000
+
+
+def _load_collection_canonical(collection, coll_name: str) -> int:
+    """Load one collection's canonical texts, a page at a time.
+
+    Fetches metadatas only — ``source_tag`` and ``text_ar`` both come from
+    metadata, so pulling every document body as well would double the cost
+    of a load that already blocks the first request of each worker.
+
+    Returns the number of rows read.
+    """
+    total = 0
+    offset = 0
+    while True:
+        page = collection.get(
+            include=["metadatas"],
+            limit=CANONICAL_PAGE_SIZE,
+            offset=offset,
+        )
+        ids = page.get('ids') or []
+        if not ids:
+            break
+
+        metadatas = page.get('metadatas') or []
+        records = []
+        for i in range(len(ids)):
+            meta = (metadatas[i] if i < len(metadatas) else None) or {}
+            normalized = _normalize_metadata(meta, coll_name)
+            records.append({
+                'source_tag': normalized.get('source_tag', ''),
+                'text_ar': normalized.get('text_ar', ''),
+            })
+        load_canonical_corpus(records)
+
+        total += len(ids)
+        offset += len(ids)
+        if len(ids) < CANONICAL_PAGE_SIZE:
+            break
+
+    return total
+
+
 def _load_canonical_corpus() -> bool:
     """Load canonical texts from ChromaDB collections for citation verification.
 
@@ -44,26 +93,16 @@ def _load_canonical_corpus() -> bool:
     loaded_any = False
     try:
         from chroma.chroma_utils import get_chroma_client
-        from retrieval.dense_rag import _normalize_metadata
 
         client = get_chroma_client()
 
         for coll_name in [QURAN_COLLECTION, HADITH_COLLECTION]:
             try:
                 collection = client.get_collection(coll_name)
-                docs = collection.get()
-                if docs.get('ids'):
-                    records = []
-                    for i, doc_id in enumerate(docs['ids']):
-                        meta = docs['metadatas'][i] if docs.get('metadatas') else {}
-                        normalized = _normalize_metadata(meta, coll_name)
-                        records.append({
-                            'source_tag': normalized.get('source_tag', ''),
-                            'text_ar': normalized.get('text_ar', ''),
-                        })
-                    load_canonical_corpus(records)
+                count = _load_collection_canonical(collection, coll_name)
+                if count:
                     loaded_any = True
-                    logger.info("Loaded canonical corpus from '%s' (%d docs)", coll_name, len(records))
+                    logger.info("Loaded canonical corpus from '%s' (%d docs)", coll_name, count)
             except Exception as exc:
                 logger.warning("Could not load canonical corpus from '%s': %s", coll_name, exc)
     except Exception as exc:
@@ -76,19 +115,29 @@ def _load_canonical_corpus() -> bool:
 # ---------------------------------------------------------------------------
 
 GENERATION_SYSTEM_PROMPT = """\
-You are an Islamic knowledge assistant. Your sole purpose is to answer
-questions using ONLY the Quran and Hadith passages provided to you.
+You are an Islamic knowledge assistant. Answer the user's question from the
+Quran and Hadith passages provided below.
 
 RULES:
-1. Answer ONLY from the provided context. Do not add any external knowledge.
-2. Cite every Quranic reference as [Q surah:ayah], e.g. [Q 2:255]
-3. Cite every Hadith as [C collection/number], e.g. [C Bukhari/52]
-4. If the answer is not found in the provided context, respond with:
-   "I do not have a grounded source for this in the provided passages."
-5. Do not issue fatwas or definitive rulings. Present what the sources say.
-6. If the question involves sensitive jurisprudence, add:
+1. Every claim must come from the provided passages — never add facts from
+   outside them. Within that limit, answer as fully as the passages allow:
+   summarise them, explain them, and draw them together.
+2. The source tags are part of the material. A tag such as [Q 2:255] states
+   the surah number and ayah number, and [C Bukhari/52] states the collection
+   — use that when the question is about a surah, a collection, or a
+   reference itself.
+3. Cite every Quranic reference as [Q surah:ayah], e.g. [Q 2:255]
+4. Cite every Hadith as [C collection/number], e.g. [C Bukhari/52]
+5. Prefer a partial answer over no answer. If the passages cover only part of
+   the question, give that part and say which part they do not cover. Reply
+   with "I do not have a grounded source for this in the provided passages."
+   only when no passage relates to the question at all.
+6. Do not issue fatwas or definitive rulings. Present what the sources say.
+7. If the question involves sensitive jurisprudence, add:
    "For a definitive ruling, please consult a qualified scholar."
-7. Respond in the same language as the user's question.
+8. Never give instructions that could cause physical, legal, or financial
+   harm. Point the user to a qualified scholar or professional instead.
+9. Respond in the same language as the user's question.
 
 Context:
 {context}"""

@@ -1,5 +1,5 @@
 """
-Scope guard — reject out-of-domain queries and low-confidence intents.
+Scope guard — reject out-of-domain queries.
 
 Pure Python, no LLM call.
 """
@@ -10,10 +10,11 @@ OFF_DOMAIN_MESSAGE = (
     "outside this scope. Please rephrase with a specific Islamic topic."
 )
 
-LOW_CONFIDENCE_MESSAGE = (
-    "I'm not confident I can answer this question from the Quran and "
-    "Hadith sources available. Please rephrase your question."
-)
+# Only a classifier that is reasonably sure a query is off-domain may block
+# it.  Below this, the query goes to retrieval instead: grounded generation
+# is itself a scope filter, and refusing an in-domain question the router
+# merely mis-scored is the worse failure.
+OFF_DOMAIN_MIN_CONFIDENCE = 0.5
 
 
 def check_scope(intent: str, confidence: float) -> dict:
@@ -21,10 +22,7 @@ def check_scope(intent: str, confidence: float) -> dict:
 
     Returns a dict with ``allowed`` (bool) and ``message`` (str).
     """
-    if intent == 'off_domain':
+    if intent == 'off_domain' and confidence >= OFF_DOMAIN_MIN_CONFIDENCE:
         return {'allowed': False, 'message': OFF_DOMAIN_MESSAGE}
-
-    if confidence < 0.4:
-        return {'allowed': False, 'message': LOW_CONFIDENCE_MESSAGE}
 
     return {'allowed': True, 'message': ''}

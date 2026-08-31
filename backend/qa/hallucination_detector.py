@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 HALLUCINATION_PROMPT = """\
 Check every Quran verse reference and Hadith citation in this answer.
 Compare each against the provided source passages.
+Flag a citation ONLY when the reference is absent from the passages or is
+attributed to the wrong passage. Summarising, paraphrasing or explaining a
+passage is not a hallucination.
 Return JSON:
 {{
   "hallucinated": true/false,
@@ -35,12 +38,15 @@ def detect_hallucinations(answer: str, context_chunks: list[dict]) -> dict:
     if not answer or not context_chunks:
         return {'hallucinated': False, 'flagged_spans': []}
 
+    # Both languages, exactly as the generator saw them — checking an English
+    # answer against Arabic-only passages flags correct answers as fabricated.
     context_lines = []
     for chunk in context_chunks:
         meta = chunk.get('metadata', {})
         source_tag = meta.get('source_tag', chunk.get('id', ''))
         text_ar = meta.get('text_ar', '')
-        context_lines.append(f"[{source_tag}] {text_ar}")
+        text_en = meta.get('text_en', '')
+        context_lines.append(f"[{source_tag}] {text_ar} | {text_en}")
 
     context_str = "\n".join(context_lines)
 
