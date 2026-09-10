@@ -24,7 +24,13 @@ def check_scope(intent: str, confidence: float) -> dict:
     if intent == 'off_domain':
         return {'allowed': False, 'message': OFF_DOMAIN_MESSAGE}
 
-    if confidence < 0.4:
+    try:
+        from django.conf import settings
+        threshold = getattr(settings, 'SCOPE_CONFIDENCE_THRESHOLD', 0.0)
+    except Exception:
+        threshold = 0.0
+
+    if confidence < threshold:
         return {'allowed': False, 'message': LOW_CONFIDENCE_MESSAGE}
 
     return {'allowed': True, 'message': ''}

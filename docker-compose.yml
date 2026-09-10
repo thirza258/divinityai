@@ -72,7 +72,7 @@ services:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
       - VITE_APP_TITLE=${VITE_APP_TITLE:-DivinityAI}
       - VITE_APP_SUBTITLE=${VITE_APP_SUBTITLE:-Quran & Hadith QA}
-      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost,divi.nevatal.tech,frontend}
+      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost,divi.nevatal.tech,muslim.nevatal.tech,frontend}
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public

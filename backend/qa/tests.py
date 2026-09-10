@@ -88,10 +88,17 @@ class ScopeGuardTests(TestCase):
         self.assertFalse(result['allowed'])
         self.assertIn('outside this scope', result['message'])
 
-    def test_rejects_low_confidence(self):
-        result = check_scope('hadith', 0.3)
-        self.assertFalse(result['allowed'])
-        self.assertIn('not confident', result['message'])
+    def test_allows_low_confidence_with_reduced_gate(self):
+        # Reduced confidence gate allows queries even with low confidence
+        result = check_scope('hadith', 0.1)
+        self.assertTrue(result['allowed'])
+
+    def test_rejects_low_confidence_when_configured(self):
+        # Rejects below custom threshold when explicitly set
+        with override_settings(SCOPE_CONFIDENCE_THRESHOLD=0.5):
+            result = check_scope('hadith', 0.3)
+            self.assertFalse(result['allowed'])
+            self.assertIn('not confident', result['message'])
 
     def test_allows_fallback_confidence(self):
         result = check_scope('hadith', 0.5)

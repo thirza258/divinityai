@@ -18,11 +18,13 @@ You are a Quran and Hadith scholar.
 Given the question: "{query}"
 Write a short hypothetical passage (2–3 sentences) that would appear in an
 authentic Hadith or Quranic tafsir that directly answers this question.
+Ensure the passage is peaceful, tame, and strictly avoids promoting harm or dangerous actions.
 Respond in the same language as the query. Arabic terms are welcome."""
 
 SUBQUERY_PROMPT = """\
 Decompose this Islamic jurisprudence question into 2–3 atomic sub-questions,
 each answerable from Quran or Hadith independently.
+Ensure sub-questions remain constructive, peaceful, and safe.
 Return as JSON array of strings.
 Query: "{query}\""""
 

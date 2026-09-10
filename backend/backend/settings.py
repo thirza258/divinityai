@@ -204,6 +204,9 @@ RAG_PHASE = int(os.getenv("RAG_PHASE", "2"))
 _rag_max_distance = os.getenv("RAG_MAX_DISTANCE", "")
 RAG_MAX_DISTANCE = float(_rag_max_distance) if _rag_max_distance else None
 
+# Scope guard confidence threshold (0.0 = allow all in-domain queries regardless of classifier confidence)
+SCOPE_CONFIDENCE_THRESHOLD = float(os.getenv("SCOPE_CONFIDENCE_THRESHOLD", "0.0"))
+
 # Ollama embedding configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "embeddinggemma")
