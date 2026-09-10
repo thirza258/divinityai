@@ -159,6 +159,7 @@ def query_dense(
     collection_name: str,
     k: int = 10,
     where_filter: dict | None = None,
+    query_embedding: list[float] | None = None,
 ) -> list[dict]:
     """Query a ChromaDB collection using Ollama dense embeddings.
 
@@ -170,12 +171,14 @@ def query_dense(
     Pre-embeds the query with Ollama and passes ``query_embeddings``
     to ChromaDB so results are in the same vector space as the
     ingested documents, regardless of the collection's persisted
-    embedding function.
+    embedding function.  Pass *query_embedding* to reuse a vector that
+    has already been computed for *query_text*.
     """
     t0 = time.time()
 
     # Pre-embed with Ollama (same function used at ingestion time)
-    query_embedding = embed_texts([query_text])[0]
+    if query_embedding is None:
+        query_embedding = embed_texts([query_text])[0]
 
     # Get the existing collection WITHOUT any embedding function — the
     # ingest created it that way, and we pass pre-embedded query vectors
@@ -246,10 +249,17 @@ def retrieve_dense_all_corpora(
     t0 = time.time()
     all_results: list[dict] = []
 
-    for idx, qv in enumerate(query_variants):
+    # One Ollama round-trip for every variant, instead of one per variant
+    # per collection — embedding dominates retrieval latency.
+    t_embed = time.time()
+    variant_embeddings = embed_texts(list(query_variants))
+    print(f"[dense_rag] embedded {len(query_variants)} variants in one batch in {time.time() - t_embed:.2f}s", flush=True)
+    logger.info("embedded %d variants in one batch, elapsed=%.2fs", len(query_variants), time.time() - t_embed)
+
+    for idx, (qv, qvec) in enumerate(zip(query_variants, variant_embeddings)):
         t_qv = time.time()
-        all_results.extend(query_dense(qv, QURAN_COLLECTION, k=dense_k))
-        all_results.extend(query_dense(qv, HADITH_COLLECTION, k=dense_k))
+        all_results.extend(query_dense(qv, QURAN_COLLECTION, k=dense_k, query_embedding=qvec))
+        all_results.extend(query_dense(qv, HADITH_COLLECTION, k=dense_k, query_embedding=qvec))
         print(f"[dense_rag] variant {idx+1}/{len(query_variants)} done in {time.time() - t_qv:.2f}s", flush=True)
 
     if not all_results:

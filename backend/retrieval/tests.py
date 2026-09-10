@@ -135,26 +135,59 @@ class VerifyChunksEmptyCorpusTests(TestCase):
         self.assertEqual(result[0]["verification_status"], "unknown")
 
 
+class VerifyChunksPartialCorpusTests(TestCase):
+    """One corpus loading and the other not must not condemn the other's chunks."""
+
+    def setUp(self):
+        self._saved_corpus = citation_verifier._canonical_corpus
+        self._saved_markers = citation_verifier._loaded_markers
+        # Quran loaded, hadith missing (e.g. its Arabic sits under an
+        # unmapped metadata key, so nothing was keyed at load time).
+        citation_verifier._canonical_corpus = {"Q 2:255": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ"}
+        citation_verifier._loaded_markers = {"Q"}
+
+    def tearDown(self):
+        citation_verifier._canonical_corpus = self._saved_corpus
+        citation_verifier._loaded_markers = self._saved_markers
+
+    def test_unloaded_corpus_marked_unknown(self):
+        chunks = [
+            {"id": "h", "metadata": {"source_tag": "C Bukhari/1", "text_ar": "نص"}},
+        ]
+        result = verify_chunks(chunks)
+        self.assertEqual(result[0]["verification_status"], "unknown")
+
+    def test_loaded_corpus_still_catches_fabricated_tag(self):
+        chunks = [
+            {"id": "q", "metadata": {"source_tag": "Q 999:999", "text_ar": "نص"}},
+        ]
+        result = verify_chunks(chunks)
+        self.assertEqual(result[0]["verification_status"], "hallucinated")
+
+
 class MaxDistanceFilterTests(TestCase):
     """Relevance cutoff in retrieve_dense_all_corpora."""
 
+    @patch('retrieval.dense_rag.embed_texts', return_value=[[0.0]])
     @patch('retrieval.dense_rag.query_dense')
-    def test_chunks_above_cutoff_dropped(self, mock_qd):
+    def test_chunks_above_cutoff_dropped(self, mock_qd, mock_embed):
         near = {"id": "near", "text": "t", "metadata": {}, "distance": 0.3}
         far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
         mock_qd.side_effect = [[near], [far]]  # quran, hadith
         result = retrieve_dense_all_corpora(["q"], max_distance=0.75)
         self.assertEqual([r["id"] for r in result], ["near"])
 
+    @patch('retrieval.dense_rag.embed_texts', return_value=[[0.0]])
     @patch('retrieval.dense_rag.query_dense')
-    def test_all_chunks_irrelevant_returns_empty(self, mock_qd):
+    def test_all_chunks_irrelevant_returns_empty(self, mock_qd, mock_embed):
         far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
         mock_qd.side_effect = [[far], []]
         result = retrieve_dense_all_corpora(["q"], max_distance=0.75)
         self.assertEqual(result, [])
 
+    @patch('retrieval.dense_rag.embed_texts', return_value=[[0.0]])
     @patch('retrieval.dense_rag.query_dense')
-    def test_none_disables_cutoff(self, mock_qd):
+    def test_none_disables_cutoff(self, mock_qd, mock_embed):
         far = {"id": "far", "text": "t", "metadata": {}, "distance": 1.4}
         mock_qd.side_effect = [[far], []]
         result = retrieve_dense_all_corpora(["q"], max_distance=None)

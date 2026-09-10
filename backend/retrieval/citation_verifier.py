@@ -29,6 +29,16 @@ class VerificationResult:
 # Populated at startup from ChromaDB documents
 _canonical_corpus: dict[str, str] = {}
 
+# Source-tag markers that actually loaded ("Q" for Quran, "C" for hadith).
+# A marker missing here means the verifier has no canonical text for that
+# corpus at all — see :func:`verify_chunks`.
+_loaded_markers: set[str] = set()
+
+
+def _tag_marker(source_tag: str) -> str:
+    """Leading marker of a source tag — ``Q`` for Quran, ``C`` for hadith."""
+    return source_tag.split(' ', 1)[0] if source_tag else ''
+
 
 def load_canonical_corpus(documents: list[dict]) -> None:
     """Load canonical texts keyed by source_tag.
@@ -45,6 +55,7 @@ def load_canonical_corpus(documents: list[dict]) -> None:
         text = doc.get('text_ar') or doc.get('text', '')
         if tag and text:
             _canonical_corpus[tag] = text
+            _loaded_markers.add(_tag_marker(tag))
     logger.info("Loaded canonical corpus with %d entries", len(_canonical_corpus))
 
 
@@ -86,9 +97,10 @@ def verify_chunks(chunks: list[dict]) -> list[dict]:
 
     Chunks without a source_tag get status ``"unknown"``.
 
-    If the canonical corpus is not loaded at all, chunks are marked
-    ``"unknown"`` rather than ``"hallucinated"`` — an unavailable
-    verifier must not condemn every retrieved passage.
+    If the canonical corpus is not loaded at all — or loaded for one corpus
+    but not the other — the affected chunks are marked ``"unknown"`` rather
+    than ``"hallucinated"``: a verifier with nothing to compare against must
+    not condemn every retrieved passage.
     """
     if not _canonical_corpus:
         logger.warning("Canonical corpus is empty — marking %d chunks 'unknown'", len(chunks))
@@ -102,13 +114,20 @@ def verify_chunks(chunks: list[dict]) -> list[dict]:
         source_tag = meta.get('source_tag', chunk.get('source_tag', ''))
         text = meta.get('text_ar') or chunk.get('text', '')
 
-        if source_tag:
+        if not source_tag:
+            chunk['verification_status'] = 'unknown'
+            chunk['verification_score'] = 0.0
+        elif _tag_marker(source_tag) not in _loaded_markers:
+            logger.warning(
+                "No canonical text loaded for '%s' — marking chunk 'unknown'",
+                source_tag,
+            )
+            chunk['verification_status'] = 'unknown'
+            chunk['verification_score'] = 0.0
+        else:
             result = verify_citation(text, source_tag)
             chunk['verification_status'] = result.status
             chunk['verification_score'] = result.score
-        else:
-            chunk['verification_status'] = 'unknown'
-            chunk['verification_score'] = 0.0
 
     return chunks
 

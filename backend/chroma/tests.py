@@ -63,6 +63,7 @@ class CollectionManagementTests(TestCase):
     def test_get_or_create_collection(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
+        mock_client.get_collection.side_effect = ValueError
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
@@ -76,6 +77,7 @@ class CollectionManagementTests(TestCase):
     def test_get_or_create_collection_default_name(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
+        mock_client.get_collection.side_effect = ValueError
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
@@ -88,6 +90,7 @@ class CollectionManagementTests(TestCase):
     def test_get_or_create_collection_with_embedding_fn(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
+        mock_client.get_collection.side_effect = ValueError
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
