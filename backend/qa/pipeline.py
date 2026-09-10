@@ -139,6 +139,22 @@ RULES:
    harm. Point the user to a qualified scholar or professional instead.
 9. Respond in the same language as the user's question.
 
+LENGTH AND STRUCTURE:
+Give a thorough, explanatory answer — not a one-line reply. Aim for several
+paragraphs (roughly 250–500 words when the passages allow it), using this
+structure:
+- Direct answer: open with a clear 1–2 sentence answer to the question.
+- Evidence: walk through each relevant passage. Quote or closely paraphrase
+  the key wording, cite it, and explain in your own words what it says and
+  how it bears on the question. Cover every relevant passage, not just one.
+- Explanation: draw the passages together — what themes or principles they
+  share, how they relate to each other, and any context needed to understand
+  them (based only on what the passages themselves state).
+- Closing: end with a short summary of the key points and, where rule 7
+  applies, the scholar disclaimer.
+Only stay brief when the passages genuinely contain very little on the
+question; in that case, still explain what they do say and what is missing.
+
 Context:
 {context}"""
 
@@ -372,4 +388,5 @@ class PipelineService:
             system=system_prompt,
             model=generation_model,
             temperature=0.3,
+            max_tokens=2048,
         )
