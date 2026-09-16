@@ -29,7 +29,10 @@ flowchart TD
         E -->|No| G[Grounded Generation]
         EC --> G
         G --> H1[Hallucination Detector]
-        H1 --> F1[Fatwa Boundary Check]
+        H1 -->|Grounded| F1[Fatwa Boundary Check]
+        H1 -->|Unsupported or check unavailable| CF[Cited source excerpts]
+        G -->|Empty, uncited, or provider failure| CF
+        CF --> F1
         F1 --> R1["Response JSON<br/>answer + sources + citations + safety"]
     end
 
@@ -54,10 +57,25 @@ flowchart TD
 
 | Layer | Guard | Mechanism |
 |-------|-------|-----------|
-| 1 | Corpus lock | LLM only sees retrieved chunks, never training data |
+| 1 | Corpus lock | Prompt restricts factual claims to retrieved passages |
 | 2 | Source tagging | Every chunk carries a verifiable `[Q N:NN]` or `[C Name/N]` tag |
 | 3 | Citation verifier | Deterministic Python string matching (exact → normalized → fuzzy) |
-| 4 | Post-gen check | LLM verifies its own output against source passages |
+| 4 | Post-gen check | Citation allowlist plus an LLM check of all factual claims; failed drafts are replaced with retrieved text |
+
+Low intent confidence does not block retrieval. Incomplete evidence produces a
+cautious partial answer with citations and an explicit statement of what the
+passages cannot establish. If generation is empty, fails, has no citations, or
+cannot be validated, the response quotes the retrieved passages directly and
+explains that they may not fully answer the question. When no usable passages
+exist, it says so without inventing an answer or references.
+
+Generation uses the same passages returned in `sources`, bounded by
+`max_sources`; `citations` lists only references present in the final answer.
+Both pipeline phases validate generated claims. `pipeline_meta.answer_mode`
+distinguishes `grounded`, `partial`, `context_only`, `no_evidence`, and
+`out_of_scope` responses; `evidence_limited` records limited evidence without
+treating it as a reason to stop answering. These are flow states, not calibrated
+probabilities of correctness.
 
 ---
 
@@ -218,7 +236,8 @@ Run the full RAG pipeline.
 | `CHROMA_CLIENT_SERVER_MODE` | `True` | Use client-server mode |
 | `QURAN_COLLECTION` | `quran_collection` | ChromaDB Quran collection |
 | `HADITH_COLLECTION` | `hadith_collection` | ChromaDB Hadith collection |
-| `RAG_PHASE` | `2` | Pipeline phase (1=basic, 2=full) |
+| `RAG_PHASE` | `2` | Pipeline phase (1=basic with grounding checks, 2=full) |
+| `RAG_MAX_DISTANCE` | disabled | Prefer matches within this distance; use weaker matches only for a limited answer when none pass |
 | `BM25_INDEX_DIR` | `backend/corpus/bm25_indexes` | BM25 index storage |
 
 ---

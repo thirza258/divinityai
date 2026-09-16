@@ -13,6 +13,8 @@ from qa.serializers import (
     SafetyResultSerializer,
 )
 from qa.intent_router import classify_intent
+from qa.evidence_checker import check_evidence_sufficiency
+from qa.hallucination_detector import detect_hallucinations
 from qa import pipeline as pipeline_module
 from qa.pipeline import PipelineService
 from retrieval import citation_verifier
@@ -74,9 +76,7 @@ SAMPLE_HADITH = [
 ]
 
 MOCK_GENERATED_ANSWER = (
-    "The Quran emphasizes patience extensively. Allah says 'O you who have believed, "
-    "seek help through patience and prayer. Indeed, Allah is with the patient.' [Q 2:153]. "
-    "This is a core Islamic virtue mentioned throughout the Quran."
+    "The Quran tells believers to seek help through patience and prayer. [Q 2:153]"
 )
 
 
@@ -180,7 +180,7 @@ class IntentRouterTests(TestCase):
         mock_generate.return_value = "not valid json!!!"
         result = classify_intent("some query")
         self.assertEqual(result['type'], 'hadith')
-        self.assertEqual(result['confidence'], 0.5)
+        self.assertEqual(result['confidence'], 0.0)
 
     @patch('qa.intent_router.generate')
     def test_fallback_when_generate_raises_value_error(self, mock_generate):
@@ -188,7 +188,25 @@ class IntentRouterTests(TestCase):
         mock_generate.side_effect = ValueError("bad client config")
         result = classify_intent("some query")
         self.assertEqual(result['type'], 'hadith')
-        self.assertEqual(result['confidence'], 0.5)
+        self.assertEqual(result['confidence'], 0.0)
+
+    @patch('qa.intent_router.generate')
+    def test_provider_failure_keeps_retrieval_route_open(self, mock_generate):
+        mock_generate.side_effect = TimeoutError('provider unavailable')
+        result = classify_intent('What is patience?')
+        self.assertTrue(check_scope(result['type'], result['confidence'])['allowed'])
+        self.assertEqual(result['confidence'], 0.0)
+
+    @patch('qa.intent_router.generate')
+    def test_invalid_classifier_output_cannot_block_retrieval(self, mock_generate):
+        for result in [[], {}, {'type': 'invalid', 'confidence': 1},
+                       {'type': 'off_domain', 'confidence': 2},
+                       {'type': 'off_domain', 'confidence': True},
+                       {'type': 'off_domain', 'confidence': 'NaN'}]:
+            with self.subTest(result=result):
+                mock_generate.return_value = json.dumps(result)
+                intent = classify_intent('What is patience?')
+                self.assertTrue(check_scope(intent['type'], intent['confidence'])['allowed'])
 
 
 # =========================================================================
@@ -359,6 +377,15 @@ class PipelineIntegrationTests(TestCase):
         """Mark the canonical corpus as loaded so the pipeline skips ChromaDB."""
         import qa.pipeline as pipeline_mod
         pipeline_mod._canonical_loaded = True
+
+    def setUp(self):
+        # Claim validation also protects the basic pipeline. Each test can
+        # override this default without making a live provider request.
+        checker = patch('qa.hallucination_detector.generate', return_value=json.dumps({
+            'hallucinated': False, 'flagged_spans': [],
+        }))
+        checker.start()
+        self.addCleanup(checker.stop)
 
     def tearDown(self):
         """Reset pipeline globals after each test."""
@@ -552,14 +579,14 @@ class PipelineIntegrationTests(TestCase):
                 "distance": 0.12,
             },
         ]
-        mock_gen.return_value = MOCK_GENERATED_ANSWER
+        mock_gen.return_value = "Allah is the Ever-Living. [Q 2:255]"
         mock_halluc.return_value = json.dumps({"hallucinated": False, "flagged_spans": []})
 
         pipeline = PipelineService(phase=2)
         result = pipeline.run(query="what is surah al-baqarah", language="en")
 
         self.assertNotIn("not confident", result["answer"])
-        self.assertEqual(result["answer"], MOCK_GENERATED_ANSWER)
+        self.assertEqual(result["answer"], mock_gen.return_value)
         self.assertGreater(len(result["sources"]), 0)
         mock_gen.assert_called_once()
 
@@ -597,10 +624,11 @@ class PipelineIntegrationTests(TestCase):
             },
         ]
 
-        # Answer mentions talaq (divorce) — should trigger fatwa boundary
+        # The query still triggers the boundary when only a partial answer
+        # about intentions can be supported by the retrieved narration.
         mock_gen.return_value = (
-            "Regarding talaq, the Prophet (ﷺ) said that divorce is permitted "
-            "but disliked by Allah. [C Bukhari/1]"
+            "Actions are by intentions. [C Bukhari/1] "
+            "This passage does not establish a ruling on divorce."
         )
 
         with patch('qa.hallucination_detector.generate') as mock_halluc:
@@ -678,8 +706,8 @@ class PipelineIntegrationTests(TestCase):
 
     @patch('qa.pipeline.generate')
     @patch('qa.pipeline.retrieve_dense_all_corpora')
-    def test_empty_llm_answer_becomes_friendly_message(self, mock_dense, mock_gen):
-        """An empty LLM response must still produce a readable chat answer."""
+    def test_empty_llm_answer_returns_retrieved_context(self, mock_dense, mock_gen):
+        """An empty LLM response must retain the useful source material."""
         self._patch_pipeline_loaders()
 
         mock_dense.return_value = [
@@ -701,15 +729,16 @@ class PipelineIntegrationTests(TestCase):
         result = pipeline.run(query="What does the Quran say about patience?", language="en")
 
         self.assertTrue(result["answer"])
-        self.assertIn("Sorry", result["answer"])
+        self.assertIn(SAMPLE_QURAN[1]['text_en'], result['answer'])
+        self.assertIn('[Q 2:153]', result['answer'])
+        self.assertEqual(result['pipeline_meta']['answer_mode'], 'context_only')
 
     @patch('qa.hallucination_detector.generate')
     @patch('qa.intent_router.generate')
     @patch('qa.pipeline.generate')
     @patch('qa.pipeline.retrieve_dense_all_corpora')
-    def test_hallucination_detected_appends_warning(self, mock_dense, mock_gen, mock_intent, mock_halluc):
-        """A positive hallucination verdict annotates the answer and returns
-        string flagged_spans matching the API contract."""
+    def test_unknown_citation_replaces_draft_with_context(self, mock_dense, mock_gen, mock_intent, mock_halluc):
+        """A fabricated reference is removed before publishing the answer."""
         self._patch_pipeline_loaders()
 
         mock_intent.return_value = json.dumps({"type": "quran_verse", "confidence": 0.9})
@@ -736,9 +765,237 @@ class PipelineIntegrationTests(TestCase):
         result = pipeline.run(query="What does the Quran say about patience?", language="en")
 
         self.assertTrue(result["safety"]["hallucination_detected"])
-        self.assertIn("could not be verified", result["answer"])
+        self.assertNotIn('[Q 9:9]', result['answer'])
+        self.assertIn(SAMPLE_QURAN[1]['text_en'], result['answer'])
+        self.assertEqual(result['citations'], ['Q 2:153'])
+        mock_halluc.assert_not_called()
         for span in result["safety"]["flagged_spans"]:
             self.assertIsInstance(span, str)
         # The safety payload must satisfy the response serializer
         response_serializer = QueryResponseSerializer(data=result)
         self.assertTrue(response_serializer.is_valid(), response_serializer.errors)
+
+
+class GroundedAnswerFlowTests(TestCase):
+    """Exercise the real pipeline with controlled retrieval and model replies."""
+
+    def setUp(self):
+        for name, value in [('_canonical_corpus', {}), ('_loaded_markers', set())]:
+            patcher = patch.object(citation_verifier, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        load_canonical_corpus(SAMPLE_QURAN + SAMPLE_HADITH)
+
+        self.chunk = self._chunk(SAMPLE_QURAN[1])
+        self.retrieval = self._mock('qa.pipeline.retrieve_dense_all_corpora', [self.chunk])
+        self.generation = self._mock('qa.pipeline.generate', MOCK_GENERATED_ANSWER)
+        self.validator = self._mock('qa.hallucination_detector.generate', json.dumps({
+            'hallucinated': False, 'flagged_spans': [],
+        }))
+        self.intent = self._mock('qa.intent_router.classify_intent', {
+            'type': 'quran_verse', 'confidence': 0.9,
+        })
+        self.evidence = self._mock('qa.evidence_checker.check_evidence_sufficiency', True)
+        self._mock('qa.query_rewriter.rewrite_queries', {'hyde': [], 'sub_queries': []})
+        self._mock('qa.pipeline._load_canonical', None)
+
+    def _mock(self, target, value):
+        patcher = patch(target, return_value=value)
+        mock = patcher.start()
+        self.addCleanup(patcher.stop)
+        return mock
+
+    def _chunk(self, source):
+        return {
+            'id': source['id'], 'text': source['text_ar'], 'distance': 0.2,
+            'metadata': {**source, 'corpus': 'quran'},
+        }
+
+    def _run(self, **kwargs):
+        return PipelineService(phase=2).run('What does the Quran say about patience?', **kwargs)
+
+    def assert_context_answer(self, result):
+        self.assertIn(SAMPLE_QURAN[1]['text_en'], result['answer'])
+        self.assertIn('[Q 2:153]', result['answer'])
+        self.assertEqual(result['citations'], ['Q 2:153'])
+        self.assertEqual(result['pipeline_meta']['answer_mode'], 'context_only')
+
+    def test_empty_whitespace_and_uncited_refusals_show_sources(self):
+        for draft in ['', '   \n ', None,
+                      'I do not have a grounded source for this in the provided passages.',
+                      'I am not confident enough to answer this question.']:
+            with self.subTest(draft=draft):
+                self.generation.return_value = draft
+                self.assert_context_answer(self._run())
+        self.validator.assert_not_called()
+
+    def test_generation_outage_returns_context_without_leaking_error(self):
+        self.generation.side_effect = TimeoutError('private provider failure')
+        result = self._run()
+        self.assert_context_answer(result)
+        self.assertNotIn('private provider failure', result['answer'])
+        self.validator.assert_not_called()
+
+    def test_low_confidence_routes_still_answer(self):
+        for intent in ['quran_verse', 'hadith', 'off_domain']:
+            with self.subTest(intent=intent):
+                self.intent.return_value = {'type': intent, 'confidence': 0.1}
+                result = self._run()
+                self.assertEqual(result['answer'], MOCK_GENERATED_ANSWER)
+                self.assertEqual(result['pipeline_meta']['intent_confidence'], 0.1)
+                self.assertEqual(result['pipeline_meta']['answer_mode'], 'grounded')
+
+    def test_insufficient_evidence_still_generates_a_qualified_partial_answer(self):
+        self.intent.return_value = {'type': 'fiqh', 'confidence': 0.2}
+        self.evidence.return_value = False
+        result = self._run()
+        self.assertIn(MOCK_GENERATED_ANSWER, result['answer'])
+        self.assertIn('cannot establish a complete answer', result['answer'])
+        self.assertEqual(result['pipeline_meta']['answer_mode'], 'partial')
+        self.assertTrue(result['pipeline_meta']['evidence_limited'])
+        self.generation.assert_called_once()
+        self.assertIn('Evidence is limited', self.generation.call_args.kwargs['system'])
+
+    @override_settings(RAG_MAX_DISTANCE=0.1)
+    def test_weak_retrieval_still_returns_a_qualified_answer(self):
+        result = self._run()
+        self.assertIn(MOCK_GENERATED_ANSWER, result['answer'])
+        self.assertTrue(result['sources'])
+        self.assertEqual(result['pipeline_meta']['answer_mode'], 'partial')
+        self.assertTrue(result['pipeline_meta']['evidence_limited'])
+
+    @override_settings(RAG_MAX_DISTANCE=0.3)
+    def test_stronger_retrieval_excludes_weaker_matches(self):
+        weak = self._chunk(SAMPLE_QURAN[0])
+        weak['distance'] = 0.9
+        self.retrieval.return_value = [self.chunk, weak]
+        result = self._run()
+        self.assertEqual([s['source_tag'] for s in result['sources']], ['Q 2:153'])
+        self.assertNotIn('Q 2:255', self.generation.call_args.kwargs['system'])
+
+    def test_uncited_and_unsupported_claims_are_replaced_in_both_phases(self):
+        self.generation.return_value = (
+            'Seek help through patience. [Q 2:153] This guarantees financial success.'
+        )
+        self.validator.return_value = json.dumps({
+            'hallucinated': True,
+            'flagged_spans': [{'text': 'guarantees financial success', 'reason': 'Unsupported claim'}],
+        })
+        for phase in [1, 2]:
+            with self.subTest(phase=phase):
+                result = PipelineService(phase=phase).run('What is patience?')
+                self.assert_context_answer(result)
+                self.assertNotIn('financial success', result['answer'])
+                self.assertTrue(result['safety']['hallucination_detected'])
+
+    def test_unavailable_or_invalid_validator_cannot_approve_draft(self):
+        for failure in [TimeoutError('checker offline'), 'not JSON', '{}',
+                        '{"hallucinated": "false", "flagged_spans": []}',
+                        '{"hallucinated": false, "flagged_spans": null}']:
+            with self.subTest(failure=failure):
+                self.validator.side_effect = failure if isinstance(failure, Exception) else None
+                self.validator.return_value = failure
+                result = self._run()
+                self.assert_context_answer(result)
+                self.assertFalse(result['safety']['hallucination_detected'])
+
+    def test_citations_cannot_reference_sources_hidden_by_limit(self):
+        self.retrieval.return_value = [self.chunk, self._chunk(SAMPLE_QURAN[0])]
+        self.generation.return_value = 'Allah is the Ever-Living. [Q 2:255]'
+        result = self._run(max_sources=1)
+        self.assert_context_answer(result)
+        self.assertEqual(len(result['sources']), 1)
+        self.assertNotIn('Q 2:255', self.generation.call_args.kwargs['system'])
+        self.assertNotIn('[Q 2:255]', result['answer'])
+        self.validator.assert_not_called()
+
+    def test_citations_include_only_sources_used_in_the_answer(self):
+        self.retrieval.return_value = [self.chunk, self._chunk(SAMPLE_QURAN[0])]
+        result = self._run()
+        self.assertEqual(len(result['sources']), 2)
+        self.assertEqual(result['citations'], ['Q 2:153'])
+
+    def test_no_evidence_does_not_invent_sources_or_call_generation(self):
+        for chunks in [[], [{'id': 'empty', 'metadata': {}}]]:
+            with self.subTest(chunks=chunks):
+                self.retrieval.return_value = chunks
+                result = self._run()
+                self.assertIn('No usable Quran or Hadith passages', result['answer'])
+                self.assertEqual(result['sources'], [])
+                self.assertEqual(result['citations'], [])
+                self.assertEqual(result['pipeline_meta']['answer_mode'], 'no_evidence')
+        self.generation.assert_not_called()
+        self.validator.assert_not_called()
+
+    def test_fallback_respects_language_and_keeps_source_wording(self):
+        self.generation.return_value = ''
+        for language, notice, text in [
+            ('ar', 'إليك النصوص المسترجعة', SAMPLE_QURAN[1]['text_ar']),
+            ('id', 'Berikut kutipan sumber', SAMPLE_QURAN[1]['text_en']),
+        ]:
+            with self.subTest(language=language):
+                result = self._run(language=language)
+                self.assertIn(notice, result['answer'])
+                self.assertIn(text, result['answer'])
+                self.assertEqual(result['citations'], ['Q 2:153'])
+
+    def test_document_text_is_used_when_metadata_has_no_passage(self):
+        self.generation.return_value = ''
+        for text in ['', None, '  \n ']:
+            with self.subTest(text=text):
+                self.chunk['metadata']['text_ar'] = None
+                self.chunk['metadata']['text_en'] = text
+                result = self._run()
+                self.assertIn(self.chunk['text'], result['answer'])
+                self.assertIn(self.chunk['text'], self.generation.call_args.kwargs['system'])
+                self.assertEqual(result['citations'], ['Q 2:153'])
+                serializer = QueryResponseSerializer(data=result)
+                self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_unverified_retrieval_is_qualified_instead_of_discarded(self):
+        citation_verifier._canonical_corpus.clear()
+        result = self._run()
+        self.assertIn(MOCK_GENERATED_ANSWER, result['answer'])
+        self.assertIn('could not be checked against the canonical source text', result['answer'])
+        self.assertEqual(result['sources'][0]['verification_status'], 'unknown')
+        self.assertEqual(result['pipeline_meta']['answer_mode'], 'partial')
+
+    def test_api_preserves_fallback_sources_and_typed_metadata(self):
+        self.generation.side_effect = TimeoutError('provider offline')
+        response = self.client.post('/api/v1/query', {'query': 'What is patience?'})
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assert_context_answer(result)
+        self.assertIsInstance(result['pipeline_meta']['llm_calls'], int)
+        self.assertIsInstance(result['pipeline_meta']['evidence_limited'], bool)
+        self.assertFalse(result.get('error', False))
+
+
+class GroundingValidatorTests(TestCase):
+    @patch('qa.evidence_checker.generate')
+    def test_failed_or_malformed_evidence_check_is_conservative(self, mock_generate):
+        chunks = [{'metadata': SAMPLE_QURAN[1]}]
+        for failure in [TimeoutError('offline'), '{}', '[]', 'not JSON',
+                        '{"sufficient": "false"}', '{"sufficient": false}']:
+            with self.subTest(failure=failure):
+                mock_generate.side_effect = failure if isinstance(failure, Exception) else None
+                mock_generate.return_value = failure
+                self.assertFalse(check_evidence_sufficiency('What is patience?', chunks))
+
+    @patch('qa.evidence_checker.generate')
+    def test_evidence_check_sees_both_source_languages(self, mock_generate):
+        mock_generate.return_value = '{"sufficient": true}'
+        self.assertTrue(check_evidence_sufficiency('What is patience?', [{'metadata': SAMPLE_QURAN[1]}]))
+        prompt = mock_generate.call_args.kwargs['prompt']
+        self.assertIn(SAMPLE_QURAN[1]['text_ar'], prompt)
+        self.assertIn(SAMPLE_QURAN[1]['text_en'], prompt)
+
+    @patch('qa.hallucination_detector.generate')
+    def test_flagged_claim_cannot_pass_with_false_verdict(self, mock_generate):
+        mock_generate.return_value = json.dumps({
+            'hallucinated': False,
+            'flagged_spans': [{'text': 'Invented ruling', 'reason': 'Absent from the passage'}],
+        })
+        result = detect_hallucinations('Invented ruling. [Q 2:153]', [{'metadata': SAMPLE_QURAN[1]}])
+        self.assertTrue(result['hallucinated'])
+        self.assertTrue(result['checked'])

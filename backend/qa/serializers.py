@@ -42,4 +42,4 @@ class QueryResponseSerializer(serializers.Serializer):
     sources = SourceSerializer(many=True)
     citations = serializers.ListField(child=serializers.CharField())
     safety = SafetyResultSerializer()
-    pipeline_meta = serializers.DictField(child=serializers.CharField())
+    pipeline_meta = serializers.DictField()

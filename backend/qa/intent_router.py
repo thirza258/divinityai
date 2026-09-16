@@ -6,6 +6,7 @@ Returns structured JSON with intent type and confidence score.
 
 import json
 import logging
+import math
 
 from django.conf import settings
 
@@ -33,7 +34,7 @@ def classify_intent(query: str) -> dict:
     """Classify the user's query into one of five intent categories.
 
     Returns a dict with ``type`` and ``confidence`` keys.
-    Falls back to ``{"type": "hadith", "confidence": 0.5}`` on parse failure.
+    Falls back to a low-confidence retrieval route if classification fails.
     """
     classifier_model = getattr(
         settings,
@@ -49,14 +50,21 @@ def classify_intent(query: str) -> dict:
             temperature=0.1,
         )
         parsed = json.loads(result)
-        if 'type' in parsed and 'confidence' in parsed:
-            return {'type': parsed['type'], 'confidence': float(parsed['confidence'])}
-        raise ValueError(f"Missing keys in response: {parsed}")
-    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        if not isinstance(parsed, dict) or parsed.get('type') not in {
+            'quran_verse', 'hadith', 'fiqh', 'calculation', 'off_domain',
+        }:
+            raise ValueError('Missing or invalid intent')
+        if isinstance(parsed.get('confidence'), bool):
+            raise ValueError('Invalid intent confidence')
+        confidence = float(parsed['confidence'])
+        if not math.isfinite(confidence) or not 0 <= confidence <= 1:
+            raise ValueError('Invalid intent confidence')
+        return {'type': parsed['type'], 'confidence': confidence}
+    except Exception as exc:
         logger.warning(
             "Intent classification failed: %s — falling back to 'hadith'. "
             "Raw response (first 200 chars): %s",
             exc,
             result[:200] if result else '<empty>',
         )
-        return {'type': 'hadith', 'confidence': 0.5}
+        return {'type': 'hadith', 'confidence': 0.0}
