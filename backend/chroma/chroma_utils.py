@@ -8,6 +8,7 @@ from typing import Any
 
 import chromadb
 from chromadb.api.models.Collection import Collection
+from chromadb.errors import NotFoundError
 from chromadb.utils import embedding_functions
 
 from .chroma_settings import (
@@ -122,7 +123,7 @@ def get_or_create_collection(
         collection = client.get_collection(name=collection_name)
         logger.debug("Using existing collection '%s'", collection_name)
         return collection
-    except ValueError:
+    except NotFoundError:
         logger.info("Collection '%s' not found — creating it", collection_name)
     except Exception:
         logger.exception("Unexpected error getting collection '%s'", collection_name)
@@ -154,7 +155,7 @@ def delete_collection(name: str) -> None:
     try:
         client.delete_collection(name)
         logger.info("Deleted collection '%s'", name)
-    except ValueError:
+    except NotFoundError:
         logger.warning("Collection '%s' does not exist — nothing to delete", name)
     except Exception:
         logger.exception("Failed to delete collection '%s'", name)

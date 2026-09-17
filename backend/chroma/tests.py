@@ -2,8 +2,10 @@
 
 from unittest.mock import patch, MagicMock
 
+from chromadb.errors import NotFoundError
 from django.test import TestCase
 
+from chroma.chroma_settings import CHROMA_DEFAULT_COLLECTION, CHROMA_DISTANCE_METRIC
 from chroma.chroma_utils import (
     add_documents,
     delete_collection,
@@ -60,37 +62,40 @@ class CollectionManagementTests(TestCase):
 
     @patch('chroma.chroma_utils.get_embedding_function')
     @patch('chroma.chroma_utils.get_chroma_client')
-    def test_get_or_create_collection(self, mock_get_client, mock_get_emb):
+    def test_get_or_create_collection_reuses_existing(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
-        mock_client.get_collection.side_effect = ValueError
-        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_client.get_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
 
         coll = get_or_create_collection(name='test_collection')
         self.assertEqual(coll, mock_collection)
-        mock_client.get_or_create_collection.assert_called_once()
+        mock_client.get_collection.assert_called_once_with(name='test_collection')
+        mock_client.get_or_create_collection.assert_not_called()
+        mock_get_emb.assert_not_called()
 
     @patch('chroma.chroma_utils.get_embedding_function')
     @patch('chroma.chroma_utils.get_chroma_client')
     def test_get_or_create_collection_default_name(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
-        mock_client.get_collection.side_effect = ValueError
-        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_client.get_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
 
         coll = get_or_create_collection()
         self.assertEqual(coll, mock_collection)
+        mock_client.get_collection.assert_called_once_with(name=CHROMA_DEFAULT_COLLECTION)
+        mock_client.get_or_create_collection.assert_not_called()
+        mock_get_emb.assert_not_called()
 
     @patch('chroma.chroma_utils.get_embedding_function')
     @patch('chroma.chroma_utils.get_chroma_client')
     def test_get_or_create_collection_with_embedding_fn(self, mock_get_client, mock_get_emb):
         mock_client = MagicMock()
         mock_collection = MagicMock()
-        mock_client.get_collection.side_effect = ValueError
+        mock_client.get_collection.side_effect = NotFoundError('collection missing')
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_get_client.return_value = mock_client
         mock_get_emb.return_value = MagicMock()
@@ -98,6 +103,54 @@ class CollectionManagementTests(TestCase):
         emb_fn = MagicMock()
         coll = get_or_create_collection(name='test', embedding_function=emb_fn)
         self.assertEqual(coll, mock_collection)
+        mock_client.get_or_create_collection.assert_called_once_with(
+            name='test', embedding_function=emb_fn,
+            metadata={'hnsw:space': CHROMA_DISTANCE_METRIC},
+        )
+        mock_get_emb.assert_not_called()
+
+    @patch('chroma.chroma_utils.get_embedding_function')
+    @patch('chroma.chroma_utils.get_chroma_client')
+    def test_creates_missing_collection_with_default_embeddings(self, mock_get_client, mock_get_emb):
+        mock_client = mock_get_client.return_value
+        mock_client.get_collection.side_effect = NotFoundError('collection missing')
+        metadata = {'hnsw:space': 'l2', 'corpus': 'quran'}
+
+        coll = get_or_create_collection(name='new_collection', metadata=metadata)
+
+        self.assertEqual(coll, mock_client.get_or_create_collection.return_value)
+        mock_get_emb.assert_called_once_with()
+        mock_client.get_or_create_collection.assert_called_once_with(
+            name='new_collection', embedding_function=mock_get_emb.return_value,
+            metadata=metadata,
+        )
+
+    @patch('chroma.chroma_utils.get_embedding_function')
+    @patch('chroma.chroma_utils.get_chroma_client')
+    def test_existing_collection_keeps_its_persisted_configuration(self, mock_get_client, mock_get_emb):
+        mock_client = mock_get_client.return_value
+
+        coll = get_or_create_collection(
+            name='existing_collection', embedding_function=MagicMock(),
+            metadata={'hnsw:space': 'cosine'},
+        )
+
+        self.assertEqual(coll, mock_client.get_collection.return_value)
+        mock_client.get_collection.assert_called_once_with(name='existing_collection')
+        mock_client.get_or_create_collection.assert_not_called()
+        mock_get_emb.assert_not_called()
+
+    @patch('chroma.chroma_utils.get_embedding_function')
+    @patch('chroma.chroma_utils.get_chroma_client')
+    def test_lookup_errors_do_not_trigger_collection_creation(self, mock_get_client, mock_get_emb):
+        mock_client = mock_get_client.return_value
+        for error in [ValueError('embedding configuration conflict'), RuntimeError('connection failed')]:
+            with self.subTest(error=error):
+                mock_client.get_collection.side_effect = error
+                with self.assertRaises(type(error)):
+                    get_or_create_collection(name='test_collection')
+        mock_client.get_or_create_collection.assert_not_called()
+        mock_get_emb.assert_not_called()
 
     @patch('chroma.chroma_utils.get_chroma_client')
     def test_list_collections(self, mock_get_client):
@@ -128,20 +181,22 @@ class CollectionManagementTests(TestCase):
     @patch('chroma.chroma_utils.get_chroma_client')
     def test_delete_collection_not_found(self, mock_get_client):
         mock_client = MagicMock()
-        mock_client.delete_collection.side_effect = ValueError("not found")
+        mock_client.delete_collection.side_effect = NotFoundError("not found")
         mock_get_client.return_value = mock_client
 
-        # Should not raise — ValueError is caught
+        # Deleting an already absent collection is a no-op.
         delete_collection('nonexistent')
 
     @patch('chroma.chroma_utils.get_chroma_client')
     def test_delete_collection_other_error(self, mock_get_client):
         mock_client = MagicMock()
-        mock_client.delete_collection.side_effect = RuntimeError("fatal")
         mock_get_client.return_value = mock_client
 
-        with self.assertRaises(RuntimeError):
-            delete_collection('doomed')
+        for error in [ValueError('invalid collection name'), RuntimeError('fatal')]:
+            with self.subTest(error=error):
+                mock_client.delete_collection.side_effect = error
+                with self.assertRaises(type(error)):
+                    delete_collection('doomed')
 
     @patch('chroma.chroma_utils.get_or_create_collection')
     def test_get_collection_count(self, mock_get_coll):

@@ -2,7 +2,7 @@
 Evidence sufficiency check — determines if retrieved chunks are
 sufficient to answer the query before generating a response.
 
-If insufficient, the pipeline can trigger a re-retrieval loop.
+An insufficient or unavailable check limits the answer; it does not block it.
 """
 
 import json
@@ -34,8 +34,10 @@ def check_evidence_sufficiency(query: str, chunks: list[dict]) -> bool:
     for chunk in chunks:
         meta = chunk.get('metadata', {})
         source_tag = meta.get('source_tag', chunk.get('id', ''))
-        text_en = meta.get('text_en', '')
-        context_lines.append(f"[{source_tag}] {text_en}")
+        text_ar = (meta.get('text_ar') or '').strip()
+        text_en = (meta.get('text_en') or '').strip()
+        passage = f"{text_ar} | {text_en}" if text_ar or text_en else chunk.get('text', '')
+        context_lines.append(f"[{source_tag}] {passage}")
 
     context_str = "\n".join(context_lines)
 
@@ -52,11 +54,13 @@ def check_evidence_sufficiency(query: str, chunks: list[dict]) -> bool:
             temperature=0.1,
         )
         parsed = json.loads(result)
-        sufficient = parsed.get('sufficient', True)
+        if not isinstance(parsed, dict) or not isinstance(parsed.get('sufficient'), bool):
+            raise ValueError('Missing or invalid evidence verdict')
+        sufficient = parsed['sufficient']
         if not sufficient:
             missing = parsed.get('missing_aspect', 'unknown')
             logger.info("Evidence insufficient for query — missing: %s", missing)
-        return bool(sufficient)
-    except (json.JSONDecodeError, Exception) as exc:
-        logger.warning("Evidence check failed: %s — assuming sufficient", exc)
-        return True
+        return sufficient
+    except Exception as exc:
+        logger.warning("Evidence check failed: %s — using limited evidence", exc)
+        return False

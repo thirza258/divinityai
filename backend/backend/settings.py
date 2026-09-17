@@ -191,13 +191,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # RAG Pipeline Settings
 # =============================================================================
 
-# Phase: 1 = core retrieval + generation, 2 = full pipeline with intent/safety
+# Phase: 1 = retrieval + generation + grounding checks, 2 = full intent/fiqh flow
 RAG_PHASE = int(os.getenv("RAG_PHASE", "2"))
 
-# Relevance cutoff for dense retrieval. Chunks above this distance are
-# dropped so unrelated passages never reach generation; if nothing passes,
-# the pipeline answers "I do not have a grounded source..." instead of
-# hallucinating.  Disabled by default: the ingest collections
+# Preferred relevance cutoff. The pipeline prefers verified chunks within
+# this distance. If only weaker matches remain, it uses them for a limited,
+# cited answer that explicitly states the gaps in the available evidence.
+# Disabled by default: the ingest collections
 # (ingest_divinityai_to_chroma.py) use Chroma's default l2 space, not
 # cosine, so a hardcoded default would drop legitimate matches.
 # Tune against real query distances (l2); set empty to disable.
