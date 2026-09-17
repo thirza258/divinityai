@@ -3,7 +3,7 @@ URL configuration for the DivinityAI backend.
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from router.views import (
     chroma_collection_detail,
@@ -16,6 +16,7 @@ from qa.views import CorpusStatsView, HealthView, QueryView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/", include('accounts.urls')),
 
     # ------------------------------------------------------------------
     # ChromaDB — Collections

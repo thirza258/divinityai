@@ -6,12 +6,20 @@ import logging
 import time
 
 from django.conf import settings
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from rest_framework import status
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import QueryRequestSerializer, QueryResponseSerializer
 from .pipeline import PipelineService
+from accounts.models import Conversation, Memory, Message, Profile
+from accounts.serializers import ConversationSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -130,8 +138,11 @@ def _pipeline_error_response(query: str) -> dict:
     }
 
 
+@method_decorator(never_cache, name='dispatch')
 class QueryView(APIView):
     """POST /api/v1/query — Run the full Islamic RAG pipeline."""
+
+    authentication_classes = [SessionAuthentication]
 
     def post(self, request):
         serializer = QueryRequestSerializer(data=request.data)
@@ -139,6 +150,23 @@ class QueryView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
+        conversation = None
+        context = {}
+        if not request.user.is_authenticated and (data.get('conversation_id') or data['save_history']):
+            raise NotAuthenticated('Sign in to save or continue a conversation.')
+        if request.user.is_authenticated:
+            if data.get('conversation_id'):
+                conversation = get_object_or_404(Conversation, pk=data['conversation_id'], user=request.user)
+            recent = list(conversation.messages.order_by('-created_at', '-id')[:6]) if conversation else []
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            context = {
+                'history': [
+                    {'role': message.role, 'content': message.content[:2000]}
+                    for message in reversed(recent) if not message.response.get('error')
+                ],
+                'memories': list(Memory.objects.filter(user=request.user).values_list('content', flat=True)[:20])
+                if profile.memory_enabled else [],
+            }
 
         try:
             pipeline = PipelineService(phase=PHASE)
@@ -146,16 +174,40 @@ class QueryView(APIView):
                 query=data['query'],
                 language=data['language'],
                 max_sources=data['max_sources'],
+                **context,
             )
         except Exception:
             logger.exception("Pipeline failed for query: %s", data['query'][:100])
-            return Response(_pipeline_error_response(data['query']))
+            result = _pipeline_error_response(data['query'])
 
         response_serializer = QueryResponseSerializer(data=result)
         if response_serializer.is_valid():
-            return Response(response_serializer.validated_data)
-        # Fallback: return raw result if serialization fails
-        logger.warning("Response serialization failed: %s", response_serializer.errors)
+            validated = dict(response_serializer.validated_data)
+            if result.get('error'):
+                validated['error'] = True
+            result = validated
+        else:
+            logger.warning("Response serialization failed: %s", response_serializer.errors)
+
+        if request.user.is_authenticated:
+            # Keep network calls outside the transaction. Recheck ownership and
+            # existence so a deleted conversation cannot be recreated mid-query.
+            with transaction.atomic():
+                if conversation:
+                    conversation = get_object_or_404(
+                        Conversation.objects.select_for_update(), pk=conversation.pk, user=request.user,
+                    )
+                else:
+                    conversation = Conversation.objects.create(
+                        user=request.user, title=data['query'][:120], language=data['language'],
+                    )
+                Message.objects.create(conversation=conversation, role='user', content=data['query'])
+                Message.objects.create(
+                    conversation=conversation, role='assistant', content=result['answer'], response=result,
+                )
+                conversation.language = data['language']
+                conversation.save(update_fields=['language', 'updated_at'])
+            result = {**result, 'conversation': ConversationSerializer(conversation).data}
         return Response(result)
 
 

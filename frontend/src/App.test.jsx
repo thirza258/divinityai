@@ -7,7 +7,7 @@ import App from './App';
 // render) gets a canned healthy response so it can never consume the mocks
 // meant for the query endpoint. Tests control the query endpoint via mockQuery().
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 let queryImpl;
 
@@ -21,6 +21,11 @@ function jsonResponse(body, ok = true, status = 200) {
 
 const queryCalls = () =>
   mockFetch.mock.calls.filter(([url]) => String(url).includes('/api/v1/query'));
+
+async function renderApp() {
+  render(<App />);
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'Your question' })).not.toBeDisabled());
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -40,6 +45,9 @@ describe('App', () => {
       if (String(url).includes('/api/v1/health')) {
         return Promise.resolve(jsonResponse({ status: 'ok', phase: 2, checks: {} }));
       }
+      if (String(url).includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({ user: null, csrf_token: 'test-csrf' }));
+      }
       return queryImpl();
     });
   });
@@ -48,47 +56,47 @@ describe('App', () => {
   // Rendering tests
   // =========================================================================
 
-  it('renders the app title', () => {
-    render(<App />);
+  it('renders the app title', async () => {
+    await renderApp();
     const elements = screen.getAllByText('DivinityAI');
     expect(elements.length).toBeGreaterThanOrEqual(1);
     // The h1 heading should exist
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('DivinityAI');
   });
 
-  it('renders the subtitle', () => {
-    render(<App />);
+  it('renders the subtitle', async () => {
+    await renderApp();
     expect(screen.getByText('Quran & Hadith QA')).toBeInTheDocument();
   });
 
-  it('renders the welcome message', () => {
-    render(<App />);
+  it('renders the welcome message', async () => {
+    await renderApp();
     expect(
       screen.getByText(/Welcome to DivinityAI/)
     ).toBeInTheDocument();
   });
 
-  it('renders the input field', () => {
-    render(<App />);
+  it('renders the input field', async () => {
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     expect(input).toBeInTheDocument();
   });
 
-  it('renders the language selector', () => {
-    render(<App />);
+  it('renders the language selector', async () => {
+    await renderApp();
     const select = screen.getByRole('combobox');
     expect(select).toBeInTheDocument();
     expect(screen.getByText('EN')).toBeInTheDocument();
   });
 
-  it('renders the submit button', () => {
-    render(<App />);
+  it('renders the submit button', async () => {
+    await renderApp();
     const button = screen.getByRole('button', { name: /Ask/i });
     expect(button).toBeInTheDocument();
   });
 
-  it('renders example question buttons', () => {
-    render(<App />);
+  it('renders example question buttons', async () => {
+    await renderApp();
     expect(
       screen.getByText('What does the Quran say about patience?')
     ).toBeInTheDocument();
@@ -100,8 +108,8 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the footer disclaimer', () => {
-    render(<App />);
+  it('renders the footer disclaimer', async () => {
+    await renderApp();
     const elements = screen.getAllByText(/Not a fatwa-issuing system/);
     expect(elements.length).toBeGreaterThanOrEqual(1);
   });
@@ -110,15 +118,15 @@ describe('App', () => {
   // Interaction tests
   // =========================================================================
 
-  it('disables submit button when input is empty', () => {
-    render(<App />);
+  it('disables submit button when input is empty', async () => {
+    await renderApp();
     const button = screen.getByRole('button', { name: /Ask/i });
     expect(button).toBeDisabled();
   });
 
   it('enables submit button when input has text', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -128,7 +136,7 @@ describe('App', () => {
 
   it('updates input value when typing', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
 
     await user.type(input, 'Hello');
@@ -150,7 +158,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -164,7 +172,7 @@ describe('App', () => {
 
   it('clicking an example question fills the input', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const exampleBtn = screen.getByText('What does the Quran say about patience?');
 
     await user.click(exampleBtn);
@@ -175,7 +183,7 @@ describe('App', () => {
 
   it('changes language when selector is changed', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const select = screen.getByRole('combobox');
 
     await user.selectOptions(select, 'ar');
@@ -192,7 +200,7 @@ describe('App', () => {
   it('sends a POST request with correct payload', async () => {
     const user = userEvent.setup();
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -242,7 +250,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -278,7 +286,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -310,7 +318,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -339,7 +347,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -360,7 +368,7 @@ describe('App', () => {
     const user = userEvent.setup();
     mockQuery(() => Promise.reject(new TypeError('Failed to fetch')));
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -386,7 +394,7 @@ describe('App', () => {
       })
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -415,7 +423,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -445,7 +453,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -476,7 +484,7 @@ describe('App', () => {
       )
     );
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -501,7 +509,7 @@ describe('App', () => {
     });
     mockQuery(() => promise);
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 
@@ -534,7 +542,7 @@ describe('App', () => {
     });
     mockQuery(() => promise);
 
-    render(<App />);
+    await renderApp();
     const input = screen.getByPlaceholderText(/Ask about the Quran or Hadith/);
     const button = screen.getByRole('button', { name: /Ask/i });
 

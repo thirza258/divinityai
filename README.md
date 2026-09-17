@@ -148,6 +148,43 @@ python manage.py ingest_hadith --collections bukhari,muslim
 - **Chat**: http://localhost:5173/chat.html
 - **Backend API**: http://localhost:8000/api/v1/health
 
+### Accounts, Chat History & Memory
+
+Run `python manage.py migrate` in `backend/` when updating an existing installation
+(Docker: `docker compose exec backend python manage.py migrate`). This creates the
+account preferences, conversation, message, and memory tables in the existing
+Django database. Keep `DATABASE_PATH` on persistent storage.
+
+Open the chat page and choose **Create account** or **Sign in**. Accounts use an
+email address and password with Django password validation and cookie sessions.
+**Account** lets you change your display name; **Sign out** clears private chats
+from the current screen. Email verification and email-based password recovery
+are not configured.
+
+- Signed-in questions and complete answers (including sources, citations, and
+  safety notices) are saved automatically. Use **Chat history** to search, reopen,
+  rename, delete, or clear conversations. **New chat** starts a separate thread.
+- Follow-up questions use the last six messages of that thread, bounded to
+  2,000 characters per message, to resolve references before source retrieval.
+- **Memory** lets you add, edit, delete, or clear up to 20 notes of 500 characters
+  each. These are explicitly saved preferences; chats do not create memories
+  automatically. Turn **Use saved memories in answers** off to keep notes without
+  applying them. Memory notes guide explanations and are never source evidence.
+- Deleting chat history does not delete memories, and clearing memories does not
+  delete chats. Guest conversations remain temporary and are not imported when
+  signing in. Previous conversations from before this feature cannot be restored.
+
+For deployment, serve the frontend and `/api` from the same origin, leave
+`VITE_API_BASE_URL` empty, set `DEBUG=False`, configure a strong `SECRET_KEY`,
+and set `CSRF_TRUSTED_ORIGINS` to the public HTTPS origin. Secure session and CSRF
+cookies default to enabled outside debug mode. Separate frontend/backend origins
+must be same-site and explicitly listed in both `CORS_ALLOWED_ORIGINS` and
+`CSRF_TRUSTED_ORIGINS`. Login and signup have an IP-based throttle using Django's
+configured cache; use a shared cache and an edge rate limit for multiple workers.
+In local development, `VITE_API_PROXY_TARGET` selects the Django server behind
+Vite's `/api` proxy (default `http://localhost:8000`). The proxy preserves the
+browser's host and port for CSRF checks, including when Vite uses a fallback port.
+
 ---
 
 ## Docker
@@ -170,6 +207,12 @@ curl http://localhost:8899/api/v1/health
 ### POST `/api/v1/query`
 
 Run the full RAG pipeline.
+
+For signed-in sessions this also saves the exchange. Include an existing
+`conversation_id` (UUID) to continue a thread, or omit it to start a new one.
+The response adds a `conversation` object with its ID, title, language, and
+timestamps. `save_history: true` explicitly requires a signed-in session, so an
+expired session cannot silently turn a saved chat into a guest query.
 
 **Request:**
 ```json
@@ -221,6 +264,29 @@ Run the full RAG pipeline.
 { "quran_collection": { "document_count": 6236 }, "hadith_collection": { "document_count": 14753 } }
 ```
 
+### Account, History & Memory API
+
+Fetch `GET /api/v1/auth/session` first to get `{user, csrf_token}` (`user` is
+`null` for guests). Include cookies and `X-CSRFToken` on every write, including
+login and registration. Both return an updated user and rotated CSRF token.
+All history and memory endpoints require a signed-in session and only operate
+on that account's records. Personal responses use `Cache-Control: no-store`.
+
+| Method | Endpoint | Body / behavior |
+|--------|----------|-----------------|
+| POST | `/api/v1/auth/register` | `{name, email, password}`; creates an account and signs in |
+| POST | `/api/v1/auth/login` | `{email, password}` |
+| POST | `/api/v1/auth/logout` | Ends the session |
+| PATCH | `/api/v1/auth/profile` | `{name?, memory_enabled?}` |
+| GET | `/api/v1/conversations?search=...&page=1` | `{count, next, previous, results}`; 30 per page, newest first |
+| DELETE | `/api/v1/conversations` | Deletes all of this account's conversations and messages |
+| GET | `/api/v1/conversations/{id}` | Conversation with ordered `messages` and original response metadata |
+| PATCH | `/api/v1/conversations/{id}` | `{title}` |
+| DELETE | `/api/v1/conversations/{id}` | Deletes the conversation and its messages |
+| GET / POST | `/api/v1/memories` | List notes / create with `{content}` |
+| PATCH / DELETE | `/api/v1/memories/{id}` | Edit with `{content}` / delete one note |
+| DELETE | `/api/v1/memories` | Deletes all of this account's notes |
+
 ---
 
 ## Environment Variables
@@ -248,6 +314,7 @@ Run the full RAG pipeline.
 divinityai/
 ├── backend/
 │   ├── backend/              # Django project settings
+│   ├── accounts/             # Session auth, private chat history, saved memories
 │   ├── chroma/               # ChromaDB utilities
 │   ├── corpus/               # Corpus ingestion + BM25
 │   │   ├── arabic_utils.py   # Arabic normalization

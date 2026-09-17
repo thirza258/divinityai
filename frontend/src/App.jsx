@@ -1,25 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { API_BASE, apiRequest } from "./api";
+import AccountDialog from "./AccountDialog";
+import HistoryPanel from "./HistoryPanel";
+import MemoryDialog from "./MemoryDialog";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const APP_TITLE = import.meta.env.VITE_APP_TITLE || "DivinityAI";
 const APP_SUBTITLE = import.meta.env.VITE_APP_SUBTITLE || "Quran & Hadith QA";
 
 /* Abort queries that hang so the chat never gets stuck loading forever */
 const QUERY_TIMEOUT_MS = 90_000;
-
-/* Extract a readable message from an API error body */
-function apiErrorMessage(data, status) {
-  if (data) {
-    if (typeof data.detail === "string") return data.detail;
-    if (typeof data.error === "string") return data.error;
-    // DRF validation errors: {field: ["message", ...]}
-    const firstField = Object.values(data).find(
-      (v) => Array.isArray(v) && v.length > 0 && typeof v[0] === "string"
-    );
-    if (firstField) return firstField[0];
-  }
-  return `The server returned an unexpected response (HTTP ${status}). Please try again.`;
-}
 
 /* ------------------------------------------------------------------ */
 /* SVG decorative elements                                            */
@@ -80,14 +69,104 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("en");
   const [health, setHealth] = useState(null);
+  const [user, setUser] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [accountMode, setAccountMode] = useState(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [conversation, setConversation] = useState(null);
+  const [historyRevision, setHistoryRevision] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [sessionRetry, setSessionRetry] = useState(0);
   const chatEnd = useRef(null);
+  const queryController = useRef(null);
+  const navigation = useRef(0);
+  const userId = useRef(null);
+
+  const updateAccount = useCallback((nextUser) => {
+    if (userId.current !== (nextUser?.id ?? null)) {
+      navigation.current += 1;
+      queryController.current?.abort();
+      setLoading(false);
+      setHistoryLoading(false);
+      setHistoryVisible(false);
+      setMessages([]);
+      setInput("");
+      setConversation(null);
+      setLanguage("en");
+      setMemoryOpen(false);
+      setAccountMode(null);
+    }
+    userId.current = nextUser?.id ?? null;
+    setUser(nextUser);
+    setAccountError("");
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const refreshSession = async () => {
+      try {
+        const data = await apiRequest("/auth/session", { signal: controller.signal });
+        if (!controller.signal.aborted) updateAccount(data.user || null);
+      } catch (err) {
+        if (!controller.signal.aborted) setAccountError(`Could not load your account. ${err.message}`);
+      } finally {
+        if (!controller.signal.aborted) setSessionLoading(false);
+      }
+    };
+    refreshSession();
+    window.addEventListener("focus", refreshSession);
+    return () => { controller.abort(); window.removeEventListener("focus", refreshSession); };
+  }, [updateAccount, sessionRetry]);
+
+  useEffect(() => () => queryController.current?.abort(), []);
+
+  function newChat() {
+    navigation.current += 1;
+    setConversation(null);
+    setMessages([]);
+    setInput("");
+  }
+
+  async function openConversation(id) {
+    const version = ++navigation.current;
+    setHistoryLoading(true);
+    setAccountError("");
+    try {
+      const data = await apiRequest(`/conversations/${id}`);
+      if (version !== navigation.current) return;
+      setConversation(data);
+      setHistoryVisible(false);
+      setLanguage(data.language);
+      setInput("");
+      setMessages(data.messages.map((message) => ({
+        ...message.response, role: message.role, content: message.content,
+        meta: message.response?.pipeline_meta || {},
+      })));
+    } catch (err) {
+      if (version === navigation.current) setAccountError(err.message);
+    } finally {
+      if (version === navigation.current) setHistoryLoading(false);
+    }
+  }
+
+  async function signOut() {
+    setAccountBusy(true);
+    try {
+      await apiRequest("/auth/logout", { method: "POST" });
+      updateAccount(null);
+    } catch (err) { setAccountError(err.message); }
+    finally { setAccountBusy(false); }
+  }
 
   const scrollToBottom = useCallback(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) scrollToBottom();
   }, [messages, scrollToBottom]);
 
   /* Poll health every 10 seconds */
@@ -115,7 +194,7 @@ export default function App() {
   const sendQuery = async (e) => {
     e.preventDefault();
     const query = input.trim();
-    if (!query || loading) return;
+    if (!query || loading || historyLoading || sessionLoading || accountBusy) return;
 
     const userMsg = { role: "user", content: query };
     setMessages((prev) => [...prev, userMsg]);
@@ -123,26 +202,23 @@ export default function App() {
     setLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
+    queryController.current = controller;
+    const version = navigation.current;
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/query`, {
+      const data = await apiRequest("/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, language, max_sources: 5 }),
+        body: {
+          query, language, max_sources: 5,
+          ...(user ? { save_history: true, conversation_id: conversation?.id || null } : {}),
+        },
         signal: controller.signal,
+        timeoutMs: QUERY_TIMEOUT_MS,
       });
-
-      // The body may not be JSON (proxy error pages, empty 5xx responses)
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = null;
-      }
-
-      if (!res.ok || !data) {
-        throw new Error(apiErrorMessage(data, res.status));
+      if (version !== navigation.current) return;
+      if (data.conversation) {
+        setConversation(data.conversation);
+        setHistoryRevision((value) => value + 1);
       }
 
       const answer = typeof data.answer === "string" ? data.answer : "";
@@ -158,8 +234,13 @@ export default function App() {
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
+      if (version !== navigation.current) return;
+      if (err.status === 403) {
+        setSessionRetry((value) => value + 1);
+        setAccountError("Your session may have expired. Sign in again to continue saving chats.");
+      }
       const detail =
-        err.name === "AbortError"
+        err.name === "AbortError" || err.name === "TimeoutError"
           ? "the request took too long and was cancelled. Please try again."
           : err.message || "please try again.";
       setMessages((prev) => [
@@ -168,13 +249,15 @@ export default function App() {
           role: "assistant",
           content: `Sorry, something went wrong: ${detail}`,
           error: true,
+          unsaved: Boolean(user),
         },
       ]);
     } finally {
-      clearTimeout(timeoutId);
-      setLoading(false);
+      if (version === navigation.current) setLoading(false);
     }
   };
+
+  const controlsDisabled = loading || historyLoading || sessionLoading || accountBusy;
 
   return (
     <div className="min-h-screen flex flex-col bg-dune-100">
@@ -284,7 +367,41 @@ export default function App() {
       {/* ============================================================ */}
       {/* CHAT AREA                                                     */}
       {/* ============================================================ */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-4 flex flex-col">
+      <div className="max-w-7xl mx-auto w-full px-4 py-4 flex items-center justify-between gap-3 flex-wrap">
+        <button type="button" className="account-button account-primary" disabled={controlsDisabled} onClick={newChat}>+ New chat</button>
+        <div className="flex items-center gap-2 flex-wrap text-sm">
+          {sessionLoading ? <span role="status">Loading account…</span> : user ? <>
+            <span className="text-dune-700 mr-1">{user.name}</span>
+            <button type="button" className="account-button lg:hidden" aria-expanded={historyVisible} aria-controls="chat-history-panel" disabled={controlsDisabled} onClick={() => setHistoryVisible((visible) => !visible)}>History</button>
+            <button type="button" className="account-button" disabled={controlsDisabled} onClick={() => setMemoryOpen(true)}>Memory</button>
+            <button type="button" className="account-button" disabled={controlsDisabled} onClick={() => setAccountMode("profile")}>Account</button>
+            <button type="button" className="account-button" disabled={controlsDisabled} onClick={signOut}>{accountBusy ? "Signing out…" : "Sign out"}</button>
+          </> : <>
+            <span className="text-dune-700 mr-1">Guest chat · not saved</span>
+            <button type="button" className="account-button" disabled={controlsDisabled} onClick={() => setAccountMode("login")}>Sign in</button>
+            <button type="button" className="account-button account-primary" disabled={controlsDisabled} onClick={() => setAccountMode("register")}>Create account</button>
+          </>}
+        </div>
+      </div>
+      {accountError && <div role="alert" className="account-error mx-4 mb-4">{accountError} <button type="button" className="underline" onClick={() => setSessionRetry((value) => value + 1)}>Refresh account</button></div>}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 pb-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 items-start">
+        <aside id="chat-history-panel" className={`bg-dune-200/40 border border-dune-300 p-4 min-w-0 ${historyVisible ? "" : "hidden lg:block"}`}>
+          {user ? <HistoryPanel key={`${user.id}:${historyRevision}`} activeId={conversation?.id} revision={historyRevision} disabled={controlsDisabled}
+            onOpen={openConversation}
+            onRename={(updated) => setConversation((previous) => previous?.id === updated.id ? updated : previous)}
+            onDelete={(id) => { if (conversation?.id === id) newChat(); }}
+            onClear={newChat}
+          /> : <>
+            <h2 className="text-lg font-bold text-islam-800 mb-2">Chat history</h2>
+            <p className="text-sm text-dune-700">Sign in to keep your conversations, revisit sources, and continue where you left off.</p>
+            <p className="text-xs text-dune-700 mt-3">Guest conversations are temporary. New chats are saved after you sign in.</p>
+          </>}
+        </aside>
+        <div className="min-w-0">
+        <div className="flex justify-between items-center gap-2 text-sm text-dune-700 mb-4" aria-live="polite">
+          <span className="font-semibold truncate">{historyLoading ? "Opening conversation…" : conversation?.title || "New conversation"}</span>
+          {user && <span className="text-xs text-right">{loading ? "Saving after reply…" : messages.some((message) => message.unsaved) ? "Some messages may not be saved" : conversation ? "Saved to your account" : "History is on"}</span>}
+        </div>
         {/* Chat container */}
         <div className="flex-1 geometric-border bg-[#fdf8f0] rounded-none overflow-hidden flex flex-col">
           {/* Messages */}
@@ -349,6 +466,7 @@ export default function App() {
                       ? formatMessage(msg.content)
                       : msg.content}
                   </div>
+                  {msg.unsaved && <p className="text-xs mt-2">This exchange may not be saved. Reopen chat history to check before retrying.</p>}
 
                   {/* Sources */}
                   {msg.sources?.length > 0 && (
@@ -425,7 +543,9 @@ export default function App() {
             <form onSubmit={sendQuery} className="flex gap-2 max-w-3xl mx-auto">
               {/* Language selector */}
               <select
+                aria-label="Answer language"
                 value={language}
+                disabled={controlsDisabled}
                 onChange={(e) => setLanguage(e.target.value)}
                 className="bg-islam-900 text-gold-200 border border-gold-600 px-2 py-2 text-xs font-semibold tracking-wide focus:outline-none focus:border-gold-400"
               >
@@ -437,26 +557,32 @@ export default function App() {
               {/* Input */}
               <input
                 type="text"
+                aria-label="Your question"
+                maxLength={2000}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about the Quran or Hadith..."
-                className="flex-1 bg-[#fdf8f0] border border-gold-500 px-4 py-2 text-sm text-dune-900 placeholder-dune-400 focus:outline-none focus:ring-2 focus:ring-gold-500 font-[Georgia]"
-                disabled={loading}
+                className="flex-1 min-w-0 bg-[#fdf8f0] border border-gold-500 px-3 py-2 text-sm text-dune-900 placeholder-dune-400 focus:outline-none focus:ring-2 focus:ring-gold-500 font-[Georgia]"
+                disabled={controlsDisabled}
                 dir="auto"
               />
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
-                className="bg-gold-500 hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed text-islam-900 px-6 py-2 text-sm font-bold tracking-wide transition-colors border border-gold-600"
+                disabled={controlsDisabled || !input.trim()}
+                className="bg-gold-500 hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed text-islam-900 px-3 md:px-6 py-2 text-sm font-bold tracking-wide transition-colors border border-gold-600"
               >
                 Ask
               </button>
             </form>
           </div>
         </div>
+        </div>
       </main>
+
+      {accountMode && <AccountDialog user={user} initialMode={accountMode} onClose={() => setAccountMode(null)} onAccount={updateAccount} />}
+      {memoryOpen && user && <MemoryDialog user={user} onAccount={updateAccount} onClose={() => setMemoryOpen(false)} />}
 
       {/* ============================================================ */}
       {/* FOOTER — Ornate                                                */}

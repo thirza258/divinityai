@@ -132,7 +132,7 @@ shell-django: ## Open Django shell
 .PHONY: test
 test: ## Run all tests (backend + frontend)
 	@echo "🧪 Running backend tests..."
-	$(COMPOSE) exec -T backend python manage.py test --verbosity=2 chroma corpus generation qa.tests qa.integration_tests retrieval router
+	$(COMPOSE) exec -T backend python manage.py test --verbosity=2 accounts chroma corpus generation qa.tests qa.integration_tests retrieval router
 	@echo ""
 	@echo "🧪 Running frontend tests..."
 	$(COMPOSE) exec -T frontend sh -c "npm ci && npm run test"
@@ -143,7 +143,7 @@ test-backend: ## Run Django tests only
 
 .PHONY: test-backend-unit
 test-backend-unit: ## Run Django unit tests only
-	$(COMPOSE) exec backend python manage.py test --verbosity=2 chroma corpus generation qa.tests retrieval router
+	$(COMPOSE) exec backend python manage.py test --verbosity=2 accounts chroma corpus generation qa.tests retrieval router
 
 .PHONY: test-backend-integration
 test-backend-integration: ## Run Django integration tests only

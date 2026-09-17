@@ -15,6 +15,8 @@ class QueryRequestSerializer(serializers.Serializer):
     )
     max_sources = serializers.IntegerField(default=5, min_value=1, max_value=20)
     include_arabic = serializers.BooleanField(default=True)
+    conversation_id = serializers.UUIDField(required=False, allow_null=True)
+    save_history = serializers.BooleanField(default=False)
 
 
 class SourceSerializer(serializers.Serializer):

@@ -33,7 +33,7 @@ services:
     ports:
       - "8899:8000"  # direct access for debugging
     environment:
-      - DEBUG=True
+      - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,nginx}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-}

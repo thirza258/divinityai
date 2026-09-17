@@ -35,8 +35,10 @@ export default defineConfig(({ mode }) => {
       ...(allowedHosts.length > 0 && { allowedHosts }),
       proxy: {
         "/api": {
-          target: env.VITE_API_BASE_URL || "http://localhost:8000",
-          changeOrigin: true,
+          target: process.env.VITE_API_PROXY_TARGET || env.VITE_API_PROXY_TARGET || env.VITE_API_BASE_URL || "http://localhost:8000",
+          // Preserve the browser's host/port so Django's same-origin CSRF
+          // check also works when Vite chooses a different development port.
+          changeOrigin: false,
         },
       },
     },

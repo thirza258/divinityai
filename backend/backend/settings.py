@@ -82,7 +82,14 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS") or (
+    ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5899', 'http://127.0.0.1:5899']
+    if DEBUG else []
+)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', str(not DEBUG)).lower() in ('true', '1', 'yes')
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
 
 # Application definition
@@ -101,6 +108,7 @@ INSTALLED_APPS = [
     'generation',
     'corpus',
     'qa',
+    'accounts',
 ]
 
 MIDDLEWARE = [
