@@ -86,6 +86,9 @@ def is_credit_exhausted_error(exc_or_status: Any, message: str = "") -> bool:
     if code == 402:
         return True
 
+    if "rate limit" in msg_str and not any(k in msg_str for k in ("credit", "payment", "balance")):
+        return False
+
     credit_keywords = (
         "402",
         "credit",
@@ -95,7 +98,6 @@ def is_credit_exhausted_error(exc_or_status: Any, message: str = "") -> bool:
         "insufficient credits",
         "insufficient_quota",
         "exceeded your current quota",
-        "limit exceeded",
         "out of credit",
     )
     return any(kw in msg_str for kw in credit_keywords)
