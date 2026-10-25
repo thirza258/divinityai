@@ -11,10 +11,10 @@
     <!-- ================================================================ -->
     <!-- SEO                                                              -->
     <!-- ================================================================ -->
-    <title>DivinityAI — Quran &amp; Hadith Answers With Citations</title>
+    <title>DivinityAI — Islamic Courses, Salah Schedule &amp; Quran/Hadith AI Q&amp;A</title>
     <meta
       name="description"
-      content="Ask questions about the Quran and Hadith and get answers grounded only in the sources, with a verifiable citation on every claim. Arabic, English, Indonesian."
+      content="Learn salah, understand the Quran &amp; Hadith with AI-powered answers backed by authentic sources. Islamic courses, daily prayer times, and verifiable citations on every claim. Arabic, English, Indonesian."
     />
     <link rel="canonical" href="https://muslim.nevatal.id/" />
     <meta name="robots" content="index, follow" />
@@ -23,16 +23,16 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="DivinityAI" />
     <meta property="og:url" content="https://muslim.nevatal.id/" />
-    <meta property="og:title" content="DivinityAI — Quran &amp; Hadith Answers With Citations" />
+    <meta property="og:title" content="DivinityAI — Islamic Courses, Salah Schedule &amp; Quran/Hadith AI Q&amp;A" />
     <meta
       property="og:description"
-      content="Answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
+      content="Your complete Islamic learning companion. Courses on salah, Quran, and more. Daily prayer times. AI answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="DivinityAI — Quran &amp; Hadith Answers With Citations" />
+    <meta name="twitter:title" content="DivinityAI — Islamic Courses, Salah Schedule &amp; Quran/Hadith AI Q&amp;A" />
     <meta
       name="twitter:description"
-      content="Answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
+      content="Your complete Islamic learning companion. Courses on salah, Quran, and more. Daily prayer times. AI answers grounded only in the Quran and authenticated Hadith, with a verifiable citation on every claim."
     />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -50,14 +50,16 @@
         "url": "https://muslim.nevatal.id/",
         "applicationCategory": "ReferenceApplication",
         "operatingSystem": "Any (web browser)",
-        "description": "A retrieval-augmented question answering system that answers questions using only the Quran and authenticated Hadith collections, attaching a verifiable source citation to every claim.",
+        "description": "A retrieval-augmented question answering system that answers questions using only the Quran and authenticated Hadith collections, attaching a verifiable source citation to every claim. Also offers structured Islamic courses and daily salah schedules.",
         "inLanguage": ["en", "ar", "id"],
         "featureList": [
           "Answers grounded exclusively in the Quran and authenticated Hadith",
           "Verifiable source tag on every claim",
           "Deterministic citation verification",
           "Off-domain and fatwa-boundary safeguards",
-          "Arabic, English and Indonesian input"
+          "Arabic, English and Indonesian input",
+          "Structured Islamic courses for beginners to advanced learners",
+          "Daily salah schedule based on geolocation"
         ]
       }
     </script>
@@ -106,6 +108,22 @@
               "@type": "Answer",
               "text": "It says so. An evidence sufficiency check runs before generation, and questions outside the corpus are declined rather than answered from guesswork."
             }
+          },
+          {
+            "@type": "Question",
+            "name": "Are the courses free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. All courses on DivinityAI are completely free. They are designed as structured learning paths drawn from authentic Islamic sources to help you learn at your own pace."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How accurate are the salah times?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prayer times are calculated using the Aladhan API based on your geographic location. The calculation method defaults to the Islamic Society of North America (ISNA) method. You can verify times against your local mosque schedule."
+            }
           }
         ]
       }
@@ -128,17 +146,18 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
               <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
             </svg>
-            <span class="text-2xl font-bold tracking-wide drop-shadow-lg">DivinityAI</span>
+            <a href="/" class="text-2xl font-bold tracking-wide drop-shadow-lg text-white no-underline">DivinityAI</a>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.5 0 3-.3 4.3-.9-2.5-1.5-4.3-4.3-4.3-7.6s1.8-6.1 4.3-7.6C15 2.3 13.5 2 12 2z" />
             </svg>
           </div>
-          <p class="text-gold-300 text-xs tracking-[0.2em]">GROUNDED QURAN &amp; HADITH Q&amp;A</p>
+          <p class="text-gold-300 text-xs tracking-[0.2em]">YOUR COMPLETE ISLAMIC LEARNING COMPANION</p>
         </div>
 
         <nav class="flex items-center gap-4 text-sm flex-wrap justify-center" aria-label="Primary">
-          <a href="#how-it-works" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">How it works</a>
-          <a href="#corpus" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Corpus</a>
+          <a href="#courses" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Courses</a>
+          <a href="#salah-schedule" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Salah Schedule</a>
+          <a href="/chat.html" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">AI Q&amp;A</a>
           <a href="#faq" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">FAQ</a>
           <a
             href="/chat.html"
@@ -167,14 +186,12 @@
         <span class="arabic text-3xl text-gold-500 select-none block mb-4">&#xFDFD;</span>
 
         <h1 class="text-3xl md:text-5xl font-bold text-islam-800 leading-tight mb-4">
-          Quran and Hadith answers you can check for yourself
+          Your Complete Islamic Learning Companion
         </h1>
 
         <p class="text-base md:text-lg text-dune-700 max-w-2xl mx-auto leading-relaxed">
-          General-purpose chatbots invent surah numbers, misattribute narrators and blur
-          similar-sounding narrations. DivinityAI answers only from a locked corpus of the
-          Quran and authenticated Hadith, and tags every claim with the exact verse or
-          narration it came from &mdash; so you never have to take its word for it.
+          Learn salah, understand the Quran &amp; Hadith with AI-powered answers backed by
+          authentic sources. Every claim carries a verifiable citation.
         </p>
 
         <p class="mt-6 text-gold-800 text-lg italic">
@@ -183,18 +200,265 @@
 
         <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="/chat.html"
+            href="#courses"
             class="bg-gold-500 hover:bg-gold-600 text-islam-900 px-8 py-3 font-bold tracking-wide border border-gold-600 transition-colors"
-            >Get started</a
+            >Explore Courses</a
           >
           <a
-            href="#how-it-works"
+            href="/chat.html"
             class="hover:bg-dune-200 text-islam-800 px-8 py-3 font-bold tracking-wide border border-islam-600 transition-colors"
-            >See how it works</a
+            >Ask AI</a
           >
         </div>
 
         <div class="star-divider mt-12 max-w-md mx-auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ISLAMIC COURSES                                                 -->
+      <!-- ============================================================== -->
+      <section id="courses" class="bg-dune-50 border-y border-dune-300 py-12">
+        <div class="max-w-5xl mx-auto px-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+            Islamic Courses
+          </h2>
+          <p class="text-dune-700 leading-relaxed max-w-3xl mb-8">
+            Structured learning paths drawn from authentic Islamic sources. Start from the basics
+            and progress at your own pace &mdash; every lesson is grounded in the Quran and Sunnah.
+          </p>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- Course 1: How to Perform Salah -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🕌</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">How to Perform Salah</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Complete step-by-step guide to the 5 daily prayers, from wudu to salam.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 45 min</span>
+              </div>
+            </a>
+
+            <!-- Course 2: How to Perform Wudu -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">💧</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">How to Perform Wudu</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Learn the correct ablution procedure before prayer.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 15 min</span>
+              </div>
+            </a>
+
+            <!-- Course 3: Understanding the Quran -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">📖</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Understanding the Quran</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Introduction to Quran structure, surahs, and how to begin reading.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 60 min</span>
+              </div>
+            </a>
+
+            <!-- Course 4: Pillars of Islam -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🏛️</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Pillars of Islam</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Learn the five foundational pillars every Muslim should know.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 30 min</span>
+              </div>
+            </a>
+
+            <!-- Course 5: Pillars of Iman -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">✨</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Pillars of Iman</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Understanding the six articles of faith in Islam.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 25 min</span>
+              </div>
+            </a>
+
+            <!-- Course 6: How to Perform Ghusl -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🚿</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">How to Perform Ghusl</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Complete purification guide for major ritual impurity.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 20 min</span>
+              </div>
+            </a>
+
+            <!-- Course 7: Introduction to Hadith -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">📜</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Introduction to Hadith</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Understanding hadith collections, grading, and terminology.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-gold-100 text-gold-800 px-2 py-0.5 text-xs font-semibold border border-gold-300">Intermediate</span>
+                <span class="text-xs text-dune-500">⏱ 45 min</span>
+              </div>
+            </a>
+
+            <!-- Course 8: Fasting in Ramadan -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🌙</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Fasting in Ramadan</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Rules, etiquette, and spiritual benefits of fasting.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 35 min</span>
+              </div>
+            </a>
+
+            <!-- Course 9: How to Calculate Zakat -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">💰</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">How to Calculate Zakat</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Practical guide to calculating and distributing zakat.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-gold-100 text-gold-800 px-2 py-0.5 text-xs font-semibold border border-gold-300">Intermediate</span>
+                <span class="text-xs text-dune-500">⏱ 40 min</span>
+              </div>
+            </a>
+
+            <!-- Course 10: Dua & Dhikr Collection -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🤲</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Dua &amp; Dhikr Collection</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Essential daily supplications and remembrance of Allah.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-100 text-islam-700 px-2 py-0.5 text-xs font-semibold border border-islam-200">Beginner</span>
+                <span class="text-xs text-dune-500">⏱ 30 min</span>
+              </div>
+            </a>
+
+            <!-- Course 11: Islamic Funeral Rites -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🕊️</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Islamic Funeral Rites</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                How to perform janazah prayer and burial procedures.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-gold-100 text-gold-800 px-2 py-0.5 text-xs font-semibold border border-gold-300">Intermediate</span>
+                <span class="text-xs text-dune-500">⏱ 30 min</span>
+              </div>
+            </a>
+
+            <!-- Course 12: Hajj & Umrah Guide -->
+            <a href="#" class="group bg-dune-100 border border-dune-300 p-5 hover:border-gold-500 hover:shadow-md transition-all block no-underline">
+              <div class="text-3xl mb-3 select-none">🕋</div>
+              <h3 class="font-bold text-islam-700 mb-1 group-hover:text-islam-600">Hajj &amp; Umrah Guide</h3>
+              <p class="text-sm text-dune-700 leading-relaxed mb-3">
+                Step-by-step guide to performing the pilgrimage.
+              </p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-block bg-islam-600 text-white px-2 py-0.5 text-xs font-semibold border border-islam-700">Advanced</span>
+                <span class="text-xs text-dune-500">⏱ 90 min</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- SALAH SCHEDULE                                                  -->
+      <!-- ============================================================== -->
+      <section id="salah-schedule" class="max-w-5xl mx-auto px-4 py-12">
+        <h2 class="text-2xl md:text-3xl font-bold text-islam-800 mb-3">
+          Daily Salah Schedule
+        </h2>
+        <p class="text-dune-700 leading-relaxed max-w-3xl mb-8">
+          Prayer times based on your location, calculated from the sun&rsquo;s position. Allow
+          location access for automatic detection, or enter your city manually.
+        </p>
+
+        <div class="geometric-border bg-dune-50 p-5 md:p-8 max-w-2xl">
+          <!-- Location info -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+            <div class="flex-1">
+              <p id="salah-location" class="font-bold text-islam-700 text-sm">
+                📍 Detecting your location&hellip;
+              </p>
+              <p id="salah-date" class="text-xs text-dune-500 mt-0.5"></p>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                id="salah-city-input"
+                placeholder="City name"
+                class="border border-dune-300 bg-white text-sm px-3 py-1.5 text-dune-900 w-36 focus:border-gold-500 focus:outline-none"
+              />
+              <button
+                id="salah-city-btn"
+                class="bg-islam-600 hover:bg-islam-700 text-white text-sm px-3 py-1.5 font-semibold transition-colors cursor-pointer"
+              >Search</button>
+            </div>
+          </div>
+
+          <!-- Prayer times grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div class="bg-dune-100 border border-dune-300 p-3 text-center">
+              <p class="text-xs text-dune-500 font-semibold tracking-wide mb-1">FAJR</p>
+              <p id="time-fajr" class="text-lg font-bold text-islam-700">--:--</p>
+            </div>
+            <div class="bg-dune-100 border border-dune-300 p-3 text-center">
+              <p class="text-xs text-dune-500 font-semibold tracking-wide mb-1">DHUHR</p>
+              <p id="time-dhuhr" class="text-lg font-bold text-islam-700">--:--</p>
+            </div>
+            <div class="bg-dune-100 border border-dune-300 p-3 text-center">
+              <p class="text-xs text-dune-500 font-semibold tracking-wide mb-1">ASR</p>
+              <p id="time-asr" class="text-lg font-bold text-islam-700">--:--</p>
+            </div>
+            <div class="bg-dune-100 border border-dune-300 p-3 text-center">
+              <p class="text-xs text-dune-500 font-semibold tracking-wide mb-1">MAGHRIB</p>
+              <p id="time-maghrib" class="text-lg font-bold text-islam-700">--:--</p>
+            </div>
+            <div class="bg-dune-100 border border-dune-300 p-3 text-center sm:col-span-1 col-span-2">
+              <p class="text-xs text-dune-500 font-semibold tracking-wide mb-1">ISHA</p>
+              <p id="time-isha" class="text-lg font-bold text-islam-700">--:--</p>
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-center">
+            <a
+              href="/salah.html"
+              class="hover:bg-dune-200 text-islam-800 px-6 py-2 font-bold text-sm tracking-wide border border-islam-600 transition-colors"
+            >View Full Schedule &rarr;</a>
+          </div>
+        </div>
+
+        <div class="star-divider mt-12 max-w-md">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
           </svg>
@@ -469,6 +733,22 @@
               outside the corpus are declined rather than answered from guesswork.
             </dd>
           </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">Are the courses free?</dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              Yes. All courses on DivinityAI are completely free. They are designed as structured
+              learning paths drawn from authentic Islamic sources to help you learn at your own
+              pace.
+            </dd>
+          </div>
+          <div class="border-l-4 border-gold-500 pl-4">
+            <dt class="font-bold text-islam-700 mb-1">How accurate are the salah times?</dt>
+            <dd class="text-dune-700 text-sm leading-relaxed">
+              Prayer times are calculated using the Aladhan API based on your geographic
+              location. The calculation method defaults to the Islamic Society of North America
+              (ISNA) method. You can verify times against your local mosque schedule.
+            </dd>
+          </div>
         </dl>
       </section>
 
@@ -477,15 +757,28 @@
       <!-- ============================================================== -->
       <section class="banner-pattern text-white py-12 border-y-2 border-gold-600/50">
         <div class="max-w-3xl mx-auto px-4 text-center">
-          <h2 class="text-2xl md:text-3xl font-bold mb-3">Ask your first question</h2>
+          <h2 class="text-2xl md:text-3xl font-bold mb-3">Start Your Islamic Learning Journey</h2>
           <p class="text-gold-200 leading-relaxed mb-6">
-            Type a question about the Quran or Hadith and read the sources for yourself.
+            Explore structured courses, check your daily prayer times, or ask the AI a question
+            about the Quran and Hadith &mdash; every answer is backed by verifiable sources.
           </p>
-          <a
-            href="/chat.html"
-            class="inline-block bg-gold-500 hover:bg-gold-600 text-islam-900 px-8 py-3 font-bold tracking-wide border border-gold-600 transition-colors"
-            >Get started</a
-          >
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a
+              href="#courses"
+              class="inline-block bg-gold-500 hover:bg-gold-600 text-islam-900 px-8 py-3 font-bold tracking-wide border border-gold-600 transition-colors"
+              >Browse Courses</a
+            >
+            <a
+              href="#salah-schedule"
+              class="inline-block hover:bg-white/10 text-white px-8 py-3 font-bold tracking-wide border border-gold-500 transition-colors"
+              >Check Salah Times</a
+            >
+            <a
+              href="/chat.html"
+              class="inline-block hover:bg-white/10 text-white px-8 py-3 font-bold tracking-wide border border-gold-500 transition-colors"
+              >Ask AI</a
+            >
+          </div>
         </div>
       </section>
     </main>
@@ -500,6 +793,15 @@
         </svg>
       </div>
       <p class="tracking-[0.2em] font-semibold text-dune-700 mb-2">DIVINITYAI</p>
+      <nav class="flex items-center justify-center gap-4 flex-wrap mb-3 text-dune-700" aria-label="Footer">
+        <a href="#courses" class="hover:text-islam-700 underline-offset-4 hover:underline">Courses</a>
+        <span>&bull;</span>
+        <a href="#salah-schedule" class="hover:text-islam-700 underline-offset-4 hover:underline">Salah Schedule</a>
+        <span>&bull;</span>
+        <a href="/chat.html" class="hover:text-islam-700 underline-offset-4 hover:underline">AI Q&amp;A</a>
+        <span>&bull;</span>
+        <a href="#faq" class="hover:text-islam-700 underline-offset-4 hover:underline">FAQ</a>
+      </nav>
       <p class="mb-1">Grounded in the Quran &bull; Authenticated Hadith &bull; Verifiable Citations</p>
       <p class="max-w-xl mx-auto">
         DivinityAI is <strong>not a fatwa-issuing system</strong>. It presents what the sources
@@ -522,6 +824,105 @@
          data-full-width-responsive="true"></ins>
     <script>
          (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+
+    <!-- ================================================================ -->
+    <!-- SALAH SCHEDULE SCRIPT                                             -->
+    <!-- ================================================================ -->
+    <script>
+      (function () {
+        const $fajr = document.getElementById('time-fajr');
+        const $dhuhr = document.getElementById('time-dhuhr');
+        const $asr = document.getElementById('time-asr');
+        const $maghrib = document.getElementById('time-maghrib');
+        const $isha = document.getElementById('time-isha');
+        const $location = document.getElementById('salah-location');
+        const $date = document.getElementById('salah-date');
+        const $cityInput = document.getElementById('salah-city-input');
+        const $cityBtn = document.getElementById('salah-city-btn');
+
+        function setDate() {
+          const now = new Date();
+          const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+          $date.textContent = now.toLocaleDateString('en-US', options);
+        }
+        setDate();
+
+        function fillTimes(timings) {
+          $fajr.textContent = timings.Fajr ? timings.Fajr.split(' ')[0] : '--:--';
+          $dhuhr.textContent = timings.Dhuhr ? timings.Dhuhr.split(' ')[0] : '--:--';
+          $asr.textContent = timings.Asr ? timings.Asr.split(' ')[0] : '--:--';
+          $maghrib.textContent = timings.Maghrib ? timings.Maghrib.split(' ')[0] : '--:--';
+          $isha.textContent = timings.Isha ? timings.Isha.split(' ')[0] : '--:--';
+        }
+
+        function fetchByCoords(lat, lng) {
+          const ts = Math.floor(Date.now() / 1000);
+          fetch(
+            'https://api.aladhan.com/v1/timings/' + ts + '?latitude=' + lat + '&longitude=' + lng + '&method=2'
+          )
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.code === 200 && data.data) {
+                fillTimes(data.data.timings);
+                var meta = data.data.meta;
+                if (meta && meta.timezone) {
+                  $location.textContent = '📍 ' + meta.timezone.replace(/\//g, ', ').replace(/_/g, ' ');
+                }
+              }
+            })
+            .catch(function () {
+              $location.textContent = '📍 Could not load prayer times';
+            });
+        }
+
+        function fetchByCity(city) {
+          fetch(
+            'https://api.aladhan.com/v1/timingsByCity?city=' + encodeURIComponent(city) + '&country=&method=2'
+          )
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.code === 200 && data.data) {
+                fillTimes(data.data.timings);
+                $location.textContent = '📍 ' + city;
+              } else {
+                $location.textContent = '📍 City not found. Try another name.';
+              }
+            })
+            .catch(function () {
+              $location.textContent = '📍 Could not load prayer times';
+            });
+        }
+
+        // Auto-detect location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              fetchByCoords(pos.coords.latitude, pos.coords.longitude);
+            },
+            function () {
+              $location.textContent = '📍 Location access denied. Enter your city below.';
+            },
+            { timeout: 8000 }
+          );
+        } else {
+          $location.textContent = '📍 Geolocation not supported. Enter your city below.';
+        }
+
+        // Manual city search
+        $cityBtn.addEventListener('click', function () {
+          var city = $cityInput.value.trim();
+          if (city) {
+            $location.textContent = '📍 Loading…';
+            fetchByCity(city);
+          }
+        });
+        $cityInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            $cityBtn.click();
+          }
+        });
+      })();
     </script>
 </body>
 </html>

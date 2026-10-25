@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Salah Schedule — DivinityAI</title>
+    <meta name="description" content="Accurate daily prayer times for your location. Fajr, Dhuhr, Asr, Maghrib, Isha times with multiple calculation methods." />
+    <link rel="canonical" href="https://muslim.nevatal.id/salah.html" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#1b5e20" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet" />
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3592604467898331" crossorigin="anonymous"></script>
+    <meta name="monetag" content="a5692aee6f7c7b3308d722bdad7c1946" />
+  </head>
+
+  <body class="bg-dune-100 text-dune-900 min-h-screen font-[Georgia]">
+    <!-- ================================================================ -->
+    <!-- BANNER                                                           -->
+    <!-- ================================================================ -->
+    <header class="banner-pattern text-white relative overflow-hidden">
+      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent"></div>
+      <div class="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent"></div>
+      <div class="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-gold-500/20 via-gold-500/40 to-gold-500/20"></div>
+      <div class="absolute right-0 top-0 bottom-0 w-2 bg-gradient-to-b from-gold-500/20 via-gold-500/40 to-gold-500/20"></div>
+
+      <div class="max-w-5xl mx-auto px-4 py-6 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-center sm:text-left">
+          <a href="/" class="flex items-center justify-center sm:justify-start gap-3 mb-1 no-underline text-white">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
+              <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+            </svg>
+            <span class="text-2xl font-bold tracking-wide drop-shadow-lg">DivinityAI</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-gold-500" aria-hidden="true">
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.5 0 3-.3 4.3-.9-2.5-1.5-4.3-4.3-4.3-7.6s1.8-6.1 4.3-7.6C15 2.3 13.5 2 12 2z" />
+            </svg>
+          </a>
+          <p class="text-gold-300 text-xs tracking-[0.2em]">GROUNDED QURAN &amp; HADITH Q&amp;A</p>
+        </div>
+
+        <nav class="flex items-center gap-4 text-sm flex-wrap justify-center" aria-label="Primary">
+          <a href="/" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Home</a>
+          <a href="/#courses" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Courses</a>
+          <a href="/salah.html" class="text-white font-bold underline underline-offset-4">Salah Schedule</a>
+          <a href="/#corpus" class="text-gold-200 hover:text-white underline-offset-4 hover:underline">Corpus</a>
+          <a
+            href="/chat.html"
+            class="bg-gold-500 hover:bg-gold-600 text-islam-900 px-4 py-2 font-bold tracking-wide border border-gold-600 transition-colors"
+            >AI Q&amp;A</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <div class="bg-gradient-to-r from-islam-700 via-islam-600 to-islam-700 text-gold-100 px-4 py-2 text-center text-xs tracking-wide border-y border-gold-600/50">
+      <div class="max-w-5xl mx-auto flex items-center justify-center gap-x-6 gap-y-1 flex-wrap">
+        <span>Accurate Prayer Times</span>
+        <span class="hidden sm:inline">&bull;</span>
+        <span>Multiple Calculation Methods</span>
+        <span class="hidden sm:inline">&bull;</span>
+        <span>Auto-detect Location</span>
+      </div>
+    </div>
+
+    <main>
+      <!-- ============================================================== -->
+      <!-- HERO                                                            -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 py-10 text-center">
+        <span class="arabic text-3xl text-gold-500 select-none block mb-4">&#xFDFD;</span>
+        <h1 class="text-3xl md:text-4xl font-bold text-islam-800 leading-tight mb-2">
+          Salah Schedule
+        </h1>
+        <p class="text-dune-700 max-w-2xl mx-auto leading-relaxed">
+          Accurate daily prayer times based on your location. Select your calculation method and
+          never miss a prayer.
+        </p>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- LOCATION BAR                                                    -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 pb-6">
+        <div class="bg-dune-50 border border-dune-300 p-4 md:p-6">
+          <div class="flex flex-col md:flex-row gap-4 items-start md:items-end">
+            <!-- Auto-detect -->
+            <div class="flex-shrink-0">
+              <button
+                id="btn-detect"
+                type="button"
+                class="bg-islam-600 hover:bg-islam-700 text-white px-5 py-2.5 font-semibold text-sm tracking-wide border border-islam-700 transition-colors flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0">
+                  <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+                </svg>
+                Detect My Location
+              </button>
+            </div>
+
+            <!-- Manual city -->
+            <div class="flex-1 w-full">
+              <label for="input-city" class="block text-xs font-semibold text-dune-700 mb-1">City</label>
+              <input
+                id="input-city"
+                type="text"
+                placeholder="e.g. Jakarta, London, Cairo"
+                class="w-full border border-dune-400 bg-white px-3 py-2 text-sm text-dune-900"
+              />
+            </div>
+
+            <!-- Country -->
+            <div class="flex-shrink-0 w-full md:w-48">
+              <label for="input-country" class="block text-xs font-semibold text-dune-700 mb-1">Country</label>
+              <input
+                id="input-country"
+                type="text"
+                placeholder="e.g. Indonesia"
+                class="w-full border border-dune-400 bg-white px-3 py-2 text-sm text-dune-900"
+              />
+            </div>
+
+            <!-- Search button -->
+            <div class="flex-shrink-0">
+              <button
+                id="btn-search"
+                type="button"
+                class="bg-gold-500 hover:bg-gold-600 text-islam-900 px-5 py-2.5 font-bold text-sm tracking-wide border border-gold-600 transition-colors"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+
+          <!-- Calculation method -->
+          <div class="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div class="flex-1">
+              <label for="select-method" class="block text-xs font-semibold text-dune-700 mb-1">Calculation Method</label>
+              <select id="select-method" class="w-full border border-dune-400 bg-white px-3 py-2 text-sm text-dune-900">
+                <option value="3">Muslim World League</option>
+                <option value="5">Egyptian General Authority of Survey</option>
+                <option value="4">Umm Al-Qura University, Makkah</option>
+                <option value="1">University of Islamic Sciences, Karachi</option>
+                <option value="2">Islamic Society of North America (ISNA)</option>
+                <option value="7">Institute of Geophysics, University of Tehran</option>
+                <option value="20">Kemenag — Ministry of Religious Affairs, Indonesia</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div id="location-status" class="mt-3 text-sm text-dune-600 flex items-center gap-2">
+            <span id="status-text">Click "Detect My Location" or enter a city to get started.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- DATE DISPLAY                                                    -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 pb-6">
+        <div id="date-display" class="text-center hidden">
+          <p class="text-lg font-bold text-islam-800" id="gregorian-date"></p>
+          <p class="text-sm text-gold-700 arabic" id="hijri-date"></p>
+          <p class="text-sm text-dune-600 mt-1" id="location-name"></p>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TODAY'S PRAYER TIMES                                            -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 pb-10">
+        <div id="today-card" class="geometric-border bg-dune-50 p-5 md:p-8 hidden">
+          <h2 class="text-xl md:text-2xl font-bold text-islam-800 mb-2 text-center">Today's Prayer Times</h2>
+
+          <!-- Countdown -->
+          <div id="countdown-wrap" class="text-center mb-6 hidden">
+            <p class="text-sm text-dune-600">Next prayer:</p>
+            <p class="text-2xl font-bold text-islam-700" id="next-prayer-name"></p>
+            <p class="text-3xl font-bold text-gold-600 tabular-nums tracking-wider" id="countdown-timer"></p>
+          </div>
+
+          <!-- Prayer rows -->
+          <div class="space-y-0" id="prayer-rows">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- MONTHLY CALENDAR                                                -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 pb-12">
+        <div id="monthly-section" class="hidden">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <button id="btn-prev-month" type="button" class="bg-dune-200 hover:bg-dune-300 text-dune-800 px-4 py-2 text-sm font-semibold border border-dune-400 transition-colors">&larr; Previous</button>
+            <h2 class="text-xl md:text-2xl font-bold text-islam-800" id="month-title"></h2>
+            <button id="btn-next-month" type="button" class="bg-dune-200 hover:bg-dune-300 text-dune-800 px-4 py-2 text-sm font-semibold border border-dune-400 transition-colors">Next &rarr;</button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border border-dune-300 min-w-[48rem]">
+              <thead class="bg-islam-600 text-gold-100">
+                <tr>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Date</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Fajr</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Sunrise</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Dhuhr</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Asr</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Maghrib</th>
+                  <th scope="col" class="text-left px-3 py-2 font-semibold">Isha</th>
+                </tr>
+              </thead>
+              <tbody id="calendar-body" class="bg-dune-50">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================================================================ -->
+    <!-- FOOTER                                                           -->
+    <!-- ================================================================ -->
+    <footer class="bg-dune-100 text-center py-8 px-4 text-xs text-dune-600">
+      <div class="star-divider max-w-md mx-auto mb-4">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+        </svg>
+      </div>
+      <p class="tracking-[0.2em] font-semibold text-dune-700 mb-2">DIVINITYAI</p>
+      <p class="mb-1">Grounded in the Quran &bull; Authenticated Hadith &bull; Verifiable Citations</p>
+      <p class="max-w-xl mx-auto">
+        DivinityAI is <strong>not a fatwa-issuing system</strong>. It presents what the sources
+        say, not rulings. For definitive rulings &mdash; particularly on divorce, inheritance,
+        usury or medical ethics &mdash; consult a qualified scholar.
+      </p>
+    </footer>
+
+    <script type="module" src="/src/salah.js"></script>
+
+    <!-- ================================================================ -->
+    <!-- SALAH SCHEDULE LOGIC                                             -->
+    <!-- ================================================================ -->
+    <script>
+    (function () {
+      "use strict";
+
+      /* ------------------------------------------------------------------ */
+      /* Constants                                                          */
+      /* ------------------------------------------------------------------ */
+
+      const PRAYERS = [
+        { key: "Fajr",    arabic: "الفجر",   label: "Fajr" },
+        { key: "Sunrise", arabic: "الشروق",  label: "Sunrise" },
+        { key: "Dhuhr",   arabic: "الظهر",   label: "Dhuhr" },
+        { key: "Asr",     arabic: "العصر",   label: "Asr" },
+        { key: "Maghrib", arabic: "المغرب",  label: "Maghrib" },
+        { key: "Isha",    arabic: "العشاء",  label: "Isha" },
+      ];
+
+      /* Only actual prayers (not sunrise) for countdown purposes */
+      const PRAYER_KEYS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+      const DEFAULT_LAT = 21.4225;
+      const DEFAULT_LNG = 39.8262;
+      const DEFAULT_CITY = "Makkah";
+
+      const LS_KEY_METHOD   = "salah_method";
+      const LS_KEY_CITY     = "salah_city";
+      const LS_KEY_COUNTRY  = "salah_country";
+      const LS_KEY_LAT      = "salah_lat";
+      const LS_KEY_LNG      = "salah_lng";
+      const LS_KEY_MODE     = "salah_mode"; // "coords" or "city"
+
+      /* ------------------------------------------------------------------ */
+      /* DOM refs                                                           */
+      /* ------------------------------------------------------------------ */
+
+      const $btnDetect    = document.getElementById("btn-detect");
+      const $btnSearch    = document.getElementById("btn-search");
+      const $inputCity    = document.getElementById("input-city");
+      const $inputCountry = document.getElementById("input-country");
+      const $selectMethod = document.getElementById("select-method");
+      const $statusText   = document.getElementById("status-text");
+      const $dateDisplay  = document.getElementById("date-display");
+      const $gregDate     = document.getElementById("gregorian-date");
+      const $hijriDate    = document.getElementById("hijri-date");
+      const $locName      = document.getElementById("location-name");
+      const $todayCard    = document.getElementById("today-card");
+      const $prayerRows   = document.getElementById("prayer-rows");
+      const $countdownWrap = document.getElementById("countdown-wrap");
+      const $nextName     = document.getElementById("next-prayer-name");
+      const $countdown    = document.getElementById("countdown-timer");
+      const $monthlySection = document.getElementById("monthly-section");
+      const $monthTitle   = document.getElementById("month-title");
+      const $calendarBody = document.getElementById("calendar-body");
+      const $btnPrev      = document.getElementById("btn-prev-month");
+      const $btnNext      = document.getElementById("btn-next-month");
+
+      /* ------------------------------------------------------------------ */
+      /* State                                                              */
+      /* ------------------------------------------------------------------ */
+
+      let state = {
+        mode: "coords",       // "coords" | "city"
+        lat: DEFAULT_LAT,
+        lng: DEFAULT_LNG,
+        city: "",
+        country: "",
+        method: 3,
+        calYear: new Date().getFullYear(),
+        calMonth: new Date().getMonth() + 1,
+        todayTimings: null,
+        countdownInterval: null,
+      };
+
+      /* ------------------------------------------------------------------ */
+      /* Restore from localStorage                                          */
+      /* ------------------------------------------------------------------ */
+
+      function loadPrefs() {
+        const m = localStorage.getItem(LS_KEY_METHOD);
+        if (m) { state.method = parseInt(m, 10); $selectMethod.value = m; }
+
+        const mode = localStorage.getItem(LS_KEY_MODE);
+        if (mode === "city") {
+          state.mode = "city";
+          state.city = localStorage.getItem(LS_KEY_CITY) || "";
+          state.country = localStorage.getItem(LS_KEY_COUNTRY) || "";
+          $inputCity.value = state.city;
+          $inputCountry.value = state.country;
+        } else {
+          const lat = localStorage.getItem(LS_KEY_LAT);
+          const lng = localStorage.getItem(LS_KEY_LNG);
+          if (lat && lng) {
+            state.lat = parseFloat(lat);
+            state.lng = parseFloat(lng);
+          }
+        }
+      }
+
+      function savePrefs() {
+        localStorage.setItem(LS_KEY_METHOD, String(state.method));
+        localStorage.setItem(LS_KEY_MODE, state.mode);
+        if (state.mode === "city") {
+          localStorage.setItem(LS_KEY_CITY, state.city);
+          localStorage.setItem(LS_KEY_COUNTRY, state.country);
+        } else {
+          localStorage.setItem(LS_KEY_LAT, String(state.lat));
+          localStorage.setItem(LS_KEY_LNG, String(state.lng));
+        }
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Helpers                                                            */
+      /* ------------------------------------------------------------------ */
+
+      function setStatus(msg, isError) {
+        $statusText.textContent = msg;
+        $statusText.className = isError ? "text-red-600" : "";
+      }
+
+      function todayTimestamp() {
+        return Math.floor(Date.now() / 1000);
+      }
+
+      /** Parse "HH:MM" or "HH:MM (TZ)" to a Date object for today. */
+      function parseTimeToDate(timeStr) {
+        const clean = timeStr.replace(/\s*\(.*\)/, "").trim();
+        const [h, m] = clean.split(":").map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        return d;
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* API calls                                                          */
+      /* ------------------------------------------------------------------ */
+
+      async function fetchTimingsByCoords(lat, lng, method) {
+        const ts = todayTimestamp();
+        const url = `https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=${method}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error: " + res.status);
+        return (await res.json()).data;
+      }
+
+      async function fetchTimingsByCity(city, country, method) {
+        const ts = todayTimestamp();
+        const url = `https://api.aladhan.com/v1/timingsByCity/${ts}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error: " + res.status);
+        return (await res.json()).data;
+      }
+
+      async function fetchCalendarByCoords(year, month, lat, lng, method) {
+        const url = `https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${lat}&longitude=${lng}&method=${method}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error: " + res.status);
+        return (await res.json()).data;
+      }
+
+      async function fetchCalendarByCity(year, month, city, country, method) {
+        const url = `https://api.aladhan.com/v1/calendarByCity/${year}/${month}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error: " + res.status);
+        return (await res.json()).data;
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Render helpers                                                     */
+      /* ------------------------------------------------------------------ */
+
+      function renderDateInfo(data) {
+        const g = data.date.gregorian;
+        const h = data.date.hijri;
+        $gregDate.textContent = `${g.weekday.en}, ${g.day} ${g.month.en} ${g.year}`;
+        $hijriDate.textContent = `${h.day} ${h.month.ar} ${h.year} هـ`;
+
+        const meta = data.meta;
+        if (meta && meta.timezone) {
+          const locParts = [];
+          if (meta.latitude && meta.longitude) {
+            locParts.push(`${Number(meta.latitude).toFixed(2)}°, ${Number(meta.longitude).toFixed(2)}°`);
+          }
+          locParts.push(meta.timezone);
+          $locName.textContent = locParts.join(" — ");
+        }
+
+        $dateDisplay.classList.remove("hidden");
+      }
+
+      function renderTodayTimings(timings) {
+        state.todayTimings = timings;
+        $prayerRows.innerHTML = "";
+
+        const now = new Date();
+        let nextPrayer = null;
+        let nextPrayerTime = null;
+
+        /* Determine next prayer */
+        for (const key of PRAYER_KEYS) {
+          const t = parseTimeToDate(timings[key]);
+          if (t > now) {
+            nextPrayer = key;
+            nextPrayerTime = t;
+            break;
+          }
+        }
+
+        PRAYERS.forEach(function (p) {
+          const timeStr = timings[p.key];
+          if (!timeStr) return;
+          const clean = timeStr.replace(/\s*\(.*\)/, "").trim();
+
+          const isNext = p.key === nextPrayer;
+          const isPast = !isNext && parseTimeToDate(timeStr) <= now && PRAYER_KEYS.includes(p.key);
+
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between px-4 py-3 border-b border-dune-200 last:border-b-0 transition-colors "
+            + (isNext
+              ? "bg-islam-50 border-l-4 border-l-islam-600"
+              : isPast
+                ? "opacity-50"
+                : "");
+
+          row.innerHTML = `
+            <div class="flex items-center gap-3">
+              <span class="arabic text-gold-600 text-base leading-none" style="font-size:1.1rem; line-height:1.4">${p.arabic}</span>
+              <span class="font-semibold text-islam-800 text-sm md:text-base">${p.label}</span>
+              ${isNext ? '<span class="text-xs bg-islam-600 text-white px-2 py-0.5 font-semibold">NEXT</span>' : ""}
+            </div>
+            <span class="font-bold text-lg md:text-xl tabular-nums ${isNext ? 'text-islam-700' : 'text-dune-800'}">${clean}</span>
+          `;
+
+          $prayerRows.appendChild(row);
+        });
+
+        $todayCard.classList.remove("hidden");
+
+        /* Start countdown */
+        startCountdown(nextPrayer, nextPrayerTime);
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Countdown                                                          */
+      /* ------------------------------------------------------------------ */
+
+      function startCountdown(prayerKey, prayerTime) {
+        if (state.countdownInterval) clearInterval(state.countdownInterval);
+
+        if (!prayerKey || !prayerTime) {
+          /* All prayers passed for today */
+          $countdownWrap.classList.remove("hidden");
+          $nextName.textContent = "Fajr (tomorrow)";
+          $countdown.textContent = "--:--:--";
+
+          /* Calculate tomorrow's Fajr if available */
+          if (state.todayTimings && state.todayTimings.Fajr) {
+            const tomorrowFajr = parseTimeToDate(state.todayTimings.Fajr);
+            tomorrowFajr.setDate(tomorrowFajr.getDate() + 1);
+            prayerTime = tomorrowFajr;
+            prayerKey = "Fajr";
+          } else {
+            return;
+          }
+        }
+
+        $countdownWrap.classList.remove("hidden");
+        const pInfo = PRAYERS.find(function (p) { return p.key === prayerKey; });
+        $nextName.textContent = pInfo ? pInfo.label : prayerKey;
+
+        function tick() {
+          const now = new Date();
+          let diff = Math.floor((prayerTime - now) / 1000);
+          if (diff <= 0) {
+            /* Time reached — reload data */
+            clearInterval(state.countdownInterval);
+            $countdown.textContent = "00:00:00";
+            setTimeout(fetchAll, 2000);
+            return;
+          }
+          const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+          const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+          const s = String(diff % 60).padStart(2, "0");
+          $countdown.textContent = h + ":" + m + ":" + s;
+        }
+
+        tick();
+        state.countdownInterval = setInterval(tick, 1000);
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Monthly calendar                                                   */
+      /* ------------------------------------------------------------------ */
+
+      function renderCalendar(days) {
+        $calendarBody.innerHTML = "";
+
+        const today = new Date();
+        const todayStr = today.getDate() + "-" + (today.getMonth() + 1) + "-" + today.getFullYear();
+
+        days.forEach(function (day) {
+          const g = day.date.gregorian;
+          const dateStr = parseInt(g.day, 10) + "-" + parseInt(g.month.number, 10) + "-" + parseInt(g.year, 10);
+          const isToday = dateStr === todayStr;
+          const t = day.timings;
+
+          const tr = document.createElement("tr");
+          tr.className = "border-t border-dune-300" + (isToday ? " bg-gold-100 font-bold" : "");
+
+          const cleanTime = function (s) { return s ? s.replace(/\s*\(.*\)/, "").trim() : "—"; };
+
+          tr.innerHTML = `
+            <td class="px-3 py-2 whitespace-nowrap">${g.weekday.en.slice(0, 3)}, ${g.day} ${g.month.en.slice(0, 3)}${isToday ? ' <span class="text-xs bg-islam-600 text-white px-1.5 py-0.5 font-semibold">TODAY</span>' : ""}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Fajr)}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Sunrise)}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Dhuhr)}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Asr)}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Maghrib)}</td>
+            <td class="px-3 py-2 tabular-nums">${cleanTime(t.Isha)}</td>
+          `;
+
+          $calendarBody.appendChild(tr);
+        });
+
+        const monthNames = ["", "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+        $monthTitle.textContent = monthNames[state.calMonth] + " " + state.calYear;
+        $monthlySection.classList.remove("hidden");
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Fetch all data                                                     */
+      /* ------------------------------------------------------------------ */
+
+      async function fetchAll() {
+        setStatus("Loading prayer times…", false);
+
+        try {
+          let todayData, calendarData;
+
+          if (state.mode === "city" && state.city) {
+            todayData = await fetchTimingsByCity(state.city, state.country, state.method);
+            calendarData = await fetchCalendarByCity(state.calYear, state.calMonth, state.city, state.country, state.method);
+          } else {
+            todayData = await fetchTimingsByCoords(state.lat, state.lng, state.method);
+            calendarData = await fetchCalendarByCoords(state.calYear, state.calMonth, state.lat, state.lng, state.method);
+          }
+
+          renderDateInfo(todayData);
+          renderTodayTimings(todayData.timings);
+          renderCalendar(calendarData);
+
+          const tz = todayData.meta ? todayData.meta.timezone : "";
+          const locLabel = state.mode === "city" ? (state.city + (state.country ? ", " + state.country : ""))
+            : (Number(state.lat).toFixed(2) + "°, " + Number(state.lng).toFixed(2) + "°");
+          setStatus("Showing times for " + locLabel + (tz ? " (" + tz + ")" : ""), false);
+
+          savePrefs();
+        } catch (err) {
+          console.error(err);
+          setStatus("Failed to load prayer times. " + err.message, true);
+        }
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Calendar month navigation                                          */
+      /* ------------------------------------------------------------------ */
+
+      async function fetchCalendar() {
+        try {
+          let calendarData;
+          if (state.mode === "city" && state.city) {
+            calendarData = await fetchCalendarByCity(state.calYear, state.calMonth, state.city, state.country, state.method);
+          } else {
+            calendarData = await fetchCalendarByCoords(state.calYear, state.calMonth, state.lat, state.lng, state.method);
+          }
+          renderCalendar(calendarData);
+        } catch (err) {
+          console.error(err);
+          setStatus("Failed to load calendar. " + err.message, true);
+        }
+      }
+
+      $btnPrev.addEventListener("click", function () {
+        state.calMonth--;
+        if (state.calMonth < 1) { state.calMonth = 12; state.calYear--; }
+        fetchCalendar();
+      });
+
+      $btnNext.addEventListener("click", function () {
+        state.calMonth++;
+        if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; }
+        fetchCalendar();
+      });
+
+      /* ------------------------------------------------------------------ */
+      /* Geolocation                                                        */
+      /* ------------------------------------------------------------------ */
+
+      function detectLocation() {
+        if (!navigator.geolocation) {
+          setStatus("Geolocation not supported by your browser. Using default (Makkah).", true);
+          state.mode = "coords";
+          state.lat = DEFAULT_LAT;
+          state.lng = DEFAULT_LNG;
+          fetchAll();
+          return;
+        }
+
+        setStatus("Detecting location…", false);
+        $btnDetect.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            state.mode = "coords";
+            state.lat = pos.coords.latitude;
+            state.lng = pos.coords.longitude;
+            $inputCity.value = "";
+            $inputCountry.value = "";
+            $btnDetect.disabled = false;
+            fetchAll();
+          },
+          function (err) {
+            console.warn("Geolocation error:", err);
+            setStatus("Location access denied. Using default (Makkah).", true);
+            state.mode = "coords";
+            state.lat = DEFAULT_LAT;
+            state.lng = DEFAULT_LNG;
+            $btnDetect.disabled = false;
+            fetchAll();
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
+      }
+
+      $btnDetect.addEventListener("click", detectLocation);
+
+      /* ------------------------------------------------------------------ */
+      /* Manual city search                                                 */
+      /* ------------------------------------------------------------------ */
+
+      function searchByCity() {
+        const city = $inputCity.value.trim();
+        const country = $inputCountry.value.trim();
+        if (!city) {
+          setStatus("Please enter a city name.", true);
+          return;
+        }
+        state.mode = "city";
+        state.city = city;
+        state.country = country;
+        state.calYear = new Date().getFullYear();
+        state.calMonth = new Date().getMonth() + 1;
+        fetchAll();
+      }
+
+      $btnSearch.addEventListener("click", searchByCity);
+
+      /* Allow Enter key in the city/country inputs */
+      $inputCity.addEventListener("keydown", function (e) { if (e.key === "Enter") searchByCity(); });
+      $inputCountry.addEventListener("keydown", function (e) { if (e.key === "Enter") searchByCity(); });
+
+      /* ------------------------------------------------------------------ */
+      /* Method change                                                      */
+      /* ------------------------------------------------------------------ */
+
+      $selectMethod.addEventListener("change", function () {
+        state.method = parseInt($selectMethod.value, 10);
+        state.calYear = new Date().getFullYear();
+        state.calMonth = new Date().getMonth() + 1;
+        fetchAll();
+      });
+
+      /* ------------------------------------------------------------------ */
+      /* Init                                                               */
+      /* ------------------------------------------------------------------ */
+
+      loadPrefs();
+
+      /* If we already have saved prefs, fetch immediately; otherwise auto-detect */
+      if (localStorage.getItem(LS_KEY_MODE)) {
+        fetchAll();
+      } else {
+        detectLocation();
+      }
+
+    })();
+    </script>
+  </body>
+</html>
