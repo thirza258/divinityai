@@ -8,6 +8,7 @@ model to use at invocation time.
 
 import logging
 import os
+import random
 import time
 from typing import Any
 
@@ -45,6 +46,59 @@ OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "DivinityAI")
 # timeout a hung provider connection blocks the request worker forever.
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
 OPENROUTER_MAX_RETRIES = int(os.getenv("OPENROUTER_MAX_RETRIES", "1"))
+
+# Free fallback models when OpenRouter account credits are exhausted
+FREE_OPENROUTER_MODELS = [
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "cohere/north-mini-code:free",
+    "recursive/flint-v1.0:free",
+    "xingchen-agi/xing4.0-29b-a4b:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    "dots-studio/dots-3-note-preview:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "google/gemma-4-31b-it:free",
+]
+
+
+def get_shuffled_free_models() -> list[str]:
+    models = list(FREE_OPENROUTER_MODELS)
+    random.shuffle(models)
+    return models
+
+
+def is_credit_exhausted_error(exc_or_status: Any, message: str = "") -> bool:
+    code = None
+    if isinstance(exc_or_status, int):
+        code = exc_or_status
+    else:
+        for attr in ("status_code", "http_status", "code"):
+            val = getattr(exc_or_status, attr, None)
+            if isinstance(val, int):
+                code = val
+                break
+        if code is None and hasattr(exc_or_status, "response"):
+            resp = getattr(exc_or_status, "response", None)
+            code = getattr(resp, "status_code", None)
+
+    msg_str = f"{exc_or_status} {message}".lower()
+    if code == 402:
+        return True
+
+    credit_keywords = (
+        "402",
+        "credit",
+        "payment required",
+        "run out of credits",
+        "insufficient balance",
+        "insufficient credits",
+        "insufficient_quota",
+        "exceeded your current quota",
+        "limit exceeded",
+        "out of credit",
+    )
+    return any(kw in msg_str for kw in credit_keywords)
 
 # ---------------------------------------------------------------------------
 # Singleton
@@ -203,10 +257,50 @@ def generate(
     print(f"[llm] generating with model={model or OPENROUTER_DEFAULT_MODEL} temperature={temperature}", flush=True)
 
     if stream:
-        return llm.stream(messages)
+        try:
+            return llm.stream(messages)
+        except Exception as exc:
+            if is_credit_exhausted_error(exc):
+                logger.warning("OpenRouter credits exhausted, falling back to shuffled free models")
+                for free_model in get_shuffled_free_models():
+                    try:
+                        fallback_llm = get_llm(
+                            model=free_model,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            api_key=api_key,
+                            base_url=base_url,
+                        )
+                        return fallback_llm.stream(messages)
+                    except Exception:
+                        continue
+            raise
 
     t0 = time.time()
-    response = llm.invoke(messages)
+    try:
+        response = llm.invoke(messages)
+    except Exception as exc:
+        if is_credit_exhausted_error(exc):
+            logger.warning("OpenRouter credits exhausted (%s), falling back to shuffled free models", exc)
+            for free_model in get_shuffled_free_models():
+                try:
+                    logger.info("Retrying generation with free fallback model: %s", free_model)
+                    fallback_llm = get_llm(
+                        model=free_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=api_key,
+                        base_url=base_url,
+                    )
+                    response = fallback_llm.invoke(messages)
+                    content = _content_to_text(response.content)
+                    if content:
+                        logger.info("Fallback succeeded with free model: %s", free_model)
+                        return content
+                except Exception as fb_exc:
+                    logger.warning("Free model %s failed: %s", free_model, fb_exc)
+                    continue
+        raise
     elapsed = time.time() - t0
     content = _content_to_text(response.content)
     if not content:
@@ -288,9 +382,49 @@ def generate_with_history(
     )
 
     if stream:
-        return llm.stream(langchain_messages)
+        try:
+            return llm.stream(langchain_messages)
+        except Exception as exc:
+            if is_credit_exhausted_error(exc):
+                logger.warning("OpenRouter credits exhausted, falling back to shuffled free models")
+                for free_model in get_shuffled_free_models():
+                    try:
+                        fallback_llm = get_llm(
+                            model=free_model,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            api_key=api_key,
+                            base_url=base_url,
+                        )
+                        return fallback_llm.stream(langchain_messages)
+                    except Exception:
+                        continue
+            raise
 
-    response = llm.invoke(langchain_messages)
-    return _content_to_text(response.content)
+    try:
+        response = llm.invoke(langchain_messages)
+        return _content_to_text(response.content)
+    except Exception as exc:
+        if is_credit_exhausted_error(exc):
+            logger.warning("OpenRouter credits exhausted (%s), falling back to shuffled free models", exc)
+            for free_model in get_shuffled_free_models():
+                try:
+                    logger.info("Retrying generate_with_history with free fallback model: %s", free_model)
+                    fallback_llm = get_llm(
+                        model=free_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=api_key,
+                        base_url=base_url,
+                    )
+                    response = fallback_llm.invoke(langchain_messages)
+                    content = _content_to_text(response.content)
+                    if content:
+                        logger.info("Fallback succeeded with free model: %s", free_model)
+                        return content
+                except Exception as fb_exc:
+                    logger.warning("Free model %s failed: %s", free_model, fb_exc)
+                    continue
+        raise
 
 

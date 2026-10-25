@@ -3,4 +3,4 @@ Content-Signal: ai-train=yes, search=yes, ai-input=yes
 Allow: /
 Disallow: /api/
 
-Sitemap: https://muslim.nevatal.tech/sitemap.xml
+Sitemap: https://muslim.nevatal.id/sitemap.xml

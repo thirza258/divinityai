@@ -299,7 +299,7 @@ LOGGING = {
 # =============================================================================
 # In production nginx proxies both frontend and backend from the same origin,
 # so CORS is not needed. In development, the frontend dev server may be on a
-# different origin (e.g. divi.nevatal.tech) and needs to call the backend API.
+# different origin (e.g. divi.nevatal.id) and needs to call the backend API.
 
 CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS") or [
     "http://localhost:5173",
@@ -307,10 +307,10 @@ CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS") or [
     "http://localhost:5899",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5899",
-    "https://divi.nevatal.tech",
-    "http://divi.nevatal.tech",
-    "https://muslim.nevatal.tech",
-    "http://muslim.nevatal.tech",
+    "https://divi.nevatal.id",
+    "http://divi.nevatal.id",
+    "https://muslim.nevatal.id",
+    "http://muslim.nevatal.id",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

@@ -248,4 +248,22 @@ class GenerateWithHistoryTests(TestCase):
         self.assertEqual(result, mock_stream)
         mock_llm.stream.assert_called_once()
 
+    @patch('generation.llm_service.get_llm')
+    def test_generate_fallback_on_credit_exhausted(self, mock_get_llm):
+        failing_llm = MagicMock()
+        credit_err = Exception("OpenRouter error: Payment Required (402) - User has run out of credits")
+        failing_llm.invoke.side_effect = credit_err
+
+        fallback_llm = MagicMock()
+        fallback_resp = MagicMock()
+        fallback_resp.content = "fallback answer"
+        fallback_llm.invoke.return_value = fallback_resp
+
+        mock_get_llm.side_effect = [failing_llm, fallback_llm]
+
+        result = generate("Test prompt")
+        self.assertEqual(result, "fallback answer")
+        self.assertEqual(mock_get_llm.call_count, 2)
+
+
 

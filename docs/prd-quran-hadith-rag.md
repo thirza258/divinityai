@@ -6,7 +6,7 @@
 **Author:** Thirzq
 **Created:** 2026-07-04
 **Last Updated:** 2026-07-04
-**Live URL:** [https://divi.nevatal.tech](https://divi.nevatal.tech)
+**Live URL:** [https://divi.nevatal.id](https://divi.nevatal.id)
 
 ---
 
