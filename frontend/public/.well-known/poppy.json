@@ -1,0 +1,46 @@
+{
+  "protocol_version": "0.1",
+  "organization": {
+    "name": "Nevatal",
+    "domain": "muslim.nevatal.id"
+  },
+  "auth": {
+    "issuer": "https://muslim.nevatal.id",
+    "direct": {
+      "scopes": [
+        "poppy:read",
+        "poppy:write"
+      ]
+    },
+    "device": {
+      "scopes": [
+        "poppy:read",
+        "poppy:write"
+      ]
+    }
+  },
+  "agent": {
+    "protocols": [
+      {
+        "type": "poppy",
+        "endpoint": "https://muslim.nevatal.id/api/"
+      }
+    ]
+  },
+  "apis": [
+    {
+      "type": "openapi",
+      "url": "https://muslim.nevatal.id/api/",
+      "description": "DivinityAI API"
+    },
+    {
+      "type": "mcp",
+      "url": "https://muslim.nevatal.id/mcp",
+      "description": "DivinityAI MCP server"
+    }
+  ],
+  "web": {
+    "browser_session_endpoint": "https://muslim.nevatal.id/"
+  },
+  "extensions": {}
+}

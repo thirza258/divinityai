@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "ask-quran",
+      "type": "skill-md",
+      "description": "Answer a question from Quran and Hadith sources with citations.",
+      "url": "https://muslim.nevatal.id/.well-known/agent-skills/ask-quran/SKILL.md"
+    }
+  ]
+}

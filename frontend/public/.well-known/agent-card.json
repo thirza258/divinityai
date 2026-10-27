@@ -1,0 +1,40 @@
+{
+  "name": "DivinityAI Agent",
+  "description": "Quran and Hadith question answering with grounded, citation-backed answers.",
+  "url": "https://muslim.nevatal.id",
+  "provider": {
+    "name": "Nevatal",
+    "url": "https://muslim.nevatal.id"
+  },
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "preferredTransport": "JSONRPC",
+  "supportedInterfaces": [
+    {
+      "url": "https://muslim.nevatal.id/api",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "0.3.0"
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "ask-quran",
+      "name": "Ask Quran and Hadith Questions",
+      "description": "Answer a question from Quran and Hadith sources with citations."
+    }
+  ],
+  "authentication": {
+    "type": "oauth2",
+    "discovery_url": "https://muslim.nevatal.id/.well-known/oauth-authorization-server"
+  }
+}

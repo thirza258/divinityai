@@ -1,0 +1,11 @@
+# DivinityAI
+
+> Quran and Hadith question answering with grounded, citation-backed answers.
+
+## Endpoints
+- Homepage: https://muslim.nevatal.id/
+- API: https://muslim.nevatal.id/api/
+- API Catalog: https://muslim.nevatal.id/.well-known/api-catalog
+- Agent Card: https://muslim.nevatal.id/.well-known/agent-card.json
+- AI Catalog: https://muslim.nevatal.id/.well-known/ai-catalog.json
+- Authentication Guide: https://muslim.nevatal.id/auth.md

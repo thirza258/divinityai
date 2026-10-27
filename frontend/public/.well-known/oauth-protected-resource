@@ -1,0 +1,18 @@
+{
+  "resource": "https://muslim.nevatal.id",
+  "authorization_servers": [
+    "https://muslim.nevatal.id"
+  ],
+  "scopes_supported": [
+    "read",
+    "write"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "resource_documentation": "https://muslim.nevatal.id/auth.md",
+  "agent_auth": {
+    "skill": "https://muslim.nevatal.id/auth.md",
+    "register_uri": "https://muslim.nevatal.id/api/agent/register"
+  }
+}

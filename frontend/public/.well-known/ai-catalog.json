@@ -1,0 +1,28 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "DivinityAI",
+    "identifier": "did:web:muslim.nevatal.id"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:muslim.nevatal.id:api:site",
+      "displayName": "DivinityAI API",
+      "type": "application/json",
+      "url": "https://muslim.nevatal.id/api/",
+      "representativeQueries": [
+        "what does DivinityAI do",
+        "get data from DivinityAI"
+      ]
+    },
+    {
+      "identifier": "urn:air:muslim.nevatal.id:server:mcp",
+      "displayName": "DivinityAI MCP Server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://muslim.nevatal.id/.well-known/mcp/server-card.json",
+      "representativeQueries": [
+        "query DivinityAI"
+      ]
+    }
+  ]
+}

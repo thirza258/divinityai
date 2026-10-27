@@ -1,0 +1,25 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://muslim.nevatal.id/api",
+      "service-desc": [
+        {
+          "href": "https://muslim.nevatal.id/api/",
+          "type": "application/json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://muslim.nevatal.id/auth.md",
+          "type": "text/markdown"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://muslim.nevatal.id/api/",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}
