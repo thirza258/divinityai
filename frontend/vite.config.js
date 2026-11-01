@@ -80,6 +80,8 @@ export default defineConfig(({ mode }) => {
           main: resolve(process.cwd(), "index.html"),
           chat: resolve(process.cwd(), "chat.html"),
           salah: resolve(process.cwd(), "salah.html"),
+          privacy: resolve(process.cwd(), "privacy.html"),
+          terms: resolve(process.cwd(), "terms.html"),
         },
       },
     },

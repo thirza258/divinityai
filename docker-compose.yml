@@ -79,6 +79,8 @@ services:
       - ./frontend/index.html:/app/index.html
       - ./frontend/chat.html:/app/chat.html
       - ./frontend/salah.html:/app/salah.html
+      - ./frontend/privacy.html:/app/privacy.html
+      - ./frontend/terms.html:/app/terms.html
       - ./frontend/vite.config.js:/app/vite.config.js
     depends_on:
       - backend
