@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Salah Schedule — DivinityAI</title>
-    <meta name="description" content="Accurate daily prayer times for your location. Fajr, Dhuhr, Asr, Maghrib, Isha times with multiple calculation methods." />
+    <title>Salah Schedule &amp; Qibla Compass — DivinityAI</title>
+    <meta name="description" content="Accurate daily prayer times and Qibla direction for your location. Fajr, Dhuhr, Asr, Maghrib, Isha times with multiple calculation methods." />
     <link rel="canonical" href="https://muslim.nevatal.id/salah.html" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#1b5e20" />
@@ -63,6 +63,8 @@
         <span>Multiple Calculation Methods</span>
         <span class="hidden sm:inline">&bull;</span>
         <span>Auto-detect Location</span>
+        <span class="hidden sm:inline">&bull;</span>
+        <span>Qibla Compass</span>
       </div>
     </div>
 
@@ -76,8 +78,8 @@
           Salah Schedule
         </h1>
         <p class="text-dune-700 max-w-2xl mx-auto leading-relaxed">
-          Accurate daily prayer times based on your location. Select your calculation method and
-          never miss a prayer.
+          Accurate daily prayer times and Qibla direction based on your location. Select your
+          calculation method and never miss a prayer.
         </p>
       </section>
 
@@ -166,6 +168,74 @@
           <p class="text-lg font-bold text-islam-800" id="gregorian-date"></p>
           <p class="text-sm text-gold-700 arabic" id="hijri-date"></p>
           <p class="text-sm text-dune-600 mt-1" id="location-name"></p>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- QIBLA DIRECTION                                                 -->
+      <!-- ============================================================== -->
+      <section class="max-w-5xl mx-auto px-4 pb-10">
+        <div id="qibla-card" class="geometric-border bg-dune-50 p-5 md:p-8 hidden">
+          <h2 class="text-xl md:text-2xl font-bold text-islam-800 mb-1 text-center">Qibla Direction</h2>
+          <p class="text-center text-sm text-dune-600 mb-6">Bearing to the Kaaba in Makkah from your location</p>
+
+          <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+            <!-- Compass -->
+            <div class="relative w-64 h-64 flex-shrink-0 select-none">
+              <svg
+                id="qibla-compass"
+                viewBox="0 0 200 200"
+                class="w-full h-full"
+                role="img"
+                aria-label="Qibla compass"
+              >
+                <!-- Fixed marker: the direction the top of the device faces -->
+                <polygon points="100,2 94,13 106,13" fill="#1b5e20" />
+
+                <g id="compass-dial">
+                  <circle cx="100" cy="100" r="94" fill="#fdf8f0" stroke="#d4c4a0" stroke-width="2" />
+                  <circle cx="100" cy="100" r="72" fill="none" stroke="#e8dcc8" stroke-width="1" />
+                  <g id="compass-ticks"></g>
+
+                  <g fill="#0d3b12" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="bold">
+                    <text x="100" y="32">N</text>
+                    <text x="174" y="105">E</text>
+                    <text x="100" y="182">S</text>
+                    <text x="26" y="105">W</text>
+                  </g>
+
+                  <!-- Needle points at the Qibla bearing -->
+                  <g id="qibla-needle">
+                    <line x1="100" y1="100" x2="100" y2="52" stroke="#c9a030" stroke-width="3" />
+                    <polygon points="100,30 107,52 100,47 93,52" fill="#c9a030" />
+                    <!-- Kaaba glyph at the tip -->
+                    <rect x="94" y="14" width="12" height="12" fill="#1a1a1a" />
+                    <rect x="94" y="18" width="12" height="2.5" fill="#c9a030" />
+                  </g>
+
+                  <circle cx="100" cy="100" r="5" fill="#0d3b12" />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Readout -->
+            <div class="text-center md:text-left max-w-xs">
+              <p class="text-5xl font-bold text-islam-700 tabular-nums" id="qibla-degrees">&mdash;</p>
+              <p class="text-sm font-semibold tracking-wide text-dune-700 mb-1">from North</p>
+              <p class="text-sm text-dune-600 mb-4" id="qibla-distance"></p>
+
+              <button
+                id="btn-compass"
+                type="button"
+                class="bg-islam-600 hover:bg-islam-700 text-white px-4 py-2 font-semibold text-sm tracking-wide border border-islam-700 transition-colors"
+              >
+                Enable Live Compass
+              </button>
+              <p id="compass-status" class="mt-3 text-xs text-dune-600">
+                Hold your phone flat and face the direction the needle points.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -270,6 +340,9 @@
       const DEFAULT_LNG = 39.8262;
       const DEFAULT_CITY = "Makkah";
 
+      const KAABA_LAT = 21.4225;
+      const KAABA_LNG = 39.8262;
+
       const LS_KEY_METHOD   = "salah_method";
       const LS_KEY_CITY     = "salah_city";
       const LS_KEY_COUNTRY  = "salah_country";
@@ -301,6 +374,15 @@
       const $calendarBody = document.getElementById("calendar-body");
       const $btnPrev      = document.getElementById("btn-prev-month");
       const $btnNext      = document.getElementById("btn-next-month");
+      const $qiblaCard    = document.getElementById("qibla-card");
+      const $qiblaDegrees = document.getElementById("qibla-degrees");
+      const $qiblaDistance = document.getElementById("qibla-distance");
+      const $compassDial  = document.getElementById("compass-dial");
+      const $compassNeedle = document.getElementById("qibla-needle");
+      const $compassTicks = document.getElementById("compass-ticks");
+      const $compassSvg   = document.getElementById("qibla-compass");
+      const $btnCompass   = document.getElementById("btn-compass");
+      const $compassStatus = document.getElementById("compass-status");
 
       /* ------------------------------------------------------------------ */
       /* State                                                              */
@@ -317,6 +399,10 @@
         calMonth: new Date().getMonth() + 1,
         todayTimings: null,
         countdownInterval: null,
+        qiblaBearing: null,
+        compassActive: false,
+        compassHeading: null,
+        compassListenersAttached: false,
       };
 
       /* ------------------------------------------------------------------ */
@@ -536,6 +622,148 @@
       }
 
       /* ------------------------------------------------------------------ */
+      /* Qibla direction                                                    */
+      /* ------------------------------------------------------------------ */
+
+      const SVG_NS = "http://www.w3.org/2000/svg";
+
+      /** Initial great-circle bearing from a point to the Kaaba, in degrees. */
+      function qiblaBearing(lat, lng) {
+        const toRad = Math.PI / 180;
+        const phi1 = lat * toRad;
+        const phi2 = KAABA_LAT * toRad;
+        const dLng = (KAABA_LNG - lng) * toRad;
+        const y = Math.sin(dLng) * Math.cos(phi2);
+        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      }
+
+      function distanceToKaaba(lat, lng) {
+        const toRad = Math.PI / 180;
+        const dLat = (KAABA_LAT - lat) * toRad;
+        const dLng = (KAABA_LNG - lng) * toRad;
+        const a = Math.sin(dLat / 2) ** 2
+          + Math.cos(lat * toRad) * Math.cos(KAABA_LAT * toRad) * Math.sin(dLng / 2) ** 2;
+        return 2 * 6371 * Math.asin(Math.sqrt(a));
+      }
+
+      function buildCompassTicks() {
+        for (let deg = 0; deg < 360; deg += 10) {
+          if (deg % 90 === 0) continue; /* cardinal points have labels */
+          const major = deg % 30 === 0;
+          const angle = (deg - 90) * Math.PI / 180;
+          const inner = major ? 80 : 86;
+          const line = document.createElementNS(SVG_NS, "line");
+          line.setAttribute("x1", (100 + Math.cos(angle) * 92).toFixed(2));
+          line.setAttribute("y1", (100 + Math.sin(angle) * 92).toFixed(2));
+          line.setAttribute("x2", (100 + Math.cos(angle) * inner).toFixed(2));
+          line.setAttribute("y2", (100 + Math.sin(angle) * inner).toFixed(2));
+          line.setAttribute("stroke", major ? "#8a7450" : "#d4c4a0");
+          line.setAttribute("stroke-width", major ? "1.6" : "1");
+          $compassTicks.appendChild(line);
+        }
+      }
+
+      function renderQibla(lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        const bearing = qiblaBearing(lat, lng);
+        state.qiblaBearing = bearing;
+
+        $qiblaDegrees.textContent = bearing.toFixed(1) + "°";
+        $qiblaDistance.textContent =
+          "Kaaba is ≈ " + Math.round(distanceToKaaba(lat, lng)).toLocaleString() + " km away";
+        $compassNeedle.setAttribute("transform", "rotate(" + bearing.toFixed(1) + " 100 100)");
+        $compassSvg.setAttribute("aria-label", "Qibla compass: " + bearing.toFixed(1) + " degrees from north");
+
+        updateCompassRotation();
+        $qiblaCard.classList.remove("hidden");
+      }
+
+      function updateCompassRotation() {
+        const heading = state.compassActive && state.compassHeading != null ? state.compassHeading : 0;
+        $compassDial.setAttribute("transform", "rotate(" + (-heading).toFixed(1) + " 100 100)");
+      }
+
+      function setCompassStatus(msg, isError) {
+        $compassStatus.textContent = msg;
+        $compassStatus.className = "mt-3 text-xs " + (isError ? "text-red-600" : "text-dune-600");
+      }
+
+      function onDeviceOrientation(event) {
+        let heading = null;
+        if (typeof event.webkitCompassHeading === "number" && event.webkitCompassHeading >= 0) {
+          heading = event.webkitCompassHeading;
+        } else if (event.absolute && typeof event.alpha === "number") {
+          heading = (360 - event.alpha) % 360;
+        }
+        if (heading == null) return;
+
+        /* Low-pass the heading so the dial does not jitter with sensor noise. */
+        if (state.compassHeading == null) {
+          state.compassHeading = heading;
+        } else {
+          const delta = ((heading - state.compassHeading + 540) % 360) - 180;
+          state.compassHeading = (state.compassHeading + delta * 0.3 + 360) % 360;
+        }
+        updateCompassRotation();
+      }
+
+      async function enableCompass() {
+        if (state.compassActive) {
+          disableCompass();
+          return;
+        }
+
+        const DOE = window.DeviceOrientationEvent;
+        if (!DOE) {
+          setCompassStatus("This device has no compass. Use the needle with a map instead.", true);
+          return;
+        }
+
+        /* iOS 13+ requires permission from a user gesture. */
+        if (typeof DOE.requestPermission === "function") {
+          try {
+            const permission = await DOE.requestPermission();
+            if (permission !== "granted") {
+              setCompassStatus("Compass permission was denied.", true);
+              return;
+            }
+          } catch (err) {
+            setCompassStatus("Compass permission is unavailable in this browser.", true);
+            return;
+          }
+        }
+
+        if (!state.compassListenersAttached) {
+          window.addEventListener("deviceorientationabsolute", onDeviceOrientation, true);
+          window.addEventListener("deviceorientation", onDeviceOrientation, true);
+          state.compassListenersAttached = true;
+        }
+
+        state.compassActive = true;
+        $btnCompass.textContent = "Disable Live Compass";
+        setCompassStatus("Move your phone in a figure-8 to calibrate, then hold it flat.", false);
+
+        /* Desktop browsers expose the event but never fire it. */
+        setTimeout(function () {
+          if (state.compassActive && state.compassHeading == null) {
+            setCompassStatus("No compass data from this device. Use the needle with a map instead.", true);
+          }
+        }, 2500);
+      }
+
+      function disableCompass() {
+        state.compassActive = false;
+        state.compassHeading = null;
+        $btnCompass.textContent = "Enable Live Compass";
+        setCompassStatus("Live compass off. The needle shows the Qibla bearing relative to North.", false);
+        updateCompassRotation();
+      }
+
+      $btnCompass.addEventListener("click", enableCompass);
+      buildCompassTicks();
+
+      /* ------------------------------------------------------------------ */
       /* Monthly calendar                                                   */
       /* ------------------------------------------------------------------ */
 
@@ -596,6 +824,12 @@
           renderDateInfo(todayData);
           renderTodayTimings(todayData.timings);
           renderCalendar(calendarData);
+
+          /* The API resolves city searches to coordinates in meta. */
+          const meta = todayData.meta || {};
+          const qLat = Number.isFinite(parseFloat(meta.latitude)) ? parseFloat(meta.latitude) : state.lat;
+          const qLng = Number.isFinite(parseFloat(meta.longitude)) ? parseFloat(meta.longitude) : state.lng;
+          renderQibla(qLat, qLng);
 
           const tz = todayData.meta ? todayData.meta.timezone : "";
           const locLabel = state.mode === "city" ? (state.city + (state.country ? ", " + state.country : ""))
