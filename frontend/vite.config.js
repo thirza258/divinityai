@@ -9,6 +9,23 @@ import tailwindcss from "@tailwindcss/vite";
 // agent-readiness checks expect. Vite's static handler would otherwise answer
 // an extensionless file such as .well-known/api-catalog as octet-stream and
 // llms.txt as text/plain, and it has no markdown negotiation for `/`.
+// Exact allowlist: the request URL must never be used to build a file path,
+// or `/.well-known/../../.env` would read files outside public/.
+const WELL_KNOWN_FILES = new Set([
+  "/.well-known/agent-card.json",
+  "/.well-known/agent-skills/ask-quran/SKILL.md",
+  "/.well-known/agent-skills/index.json",
+  "/.well-known/ai-catalog.json",
+  "/.well-known/api-catalog",
+  "/.well-known/jwks.json",
+  "/.well-known/mcp/server-card.json",
+  "/.well-known/mcp/server-cards.json",
+  "/.well-known/oauth-authorization-server",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/openid-configuration",
+  "/.well-known/poppy.json",
+]);
+
 function agentDiscovery() {
   return {
     name: "agent-discovery",
@@ -36,7 +53,7 @@ function agentDiscovery() {
         } else if (url === "/auth.md") {
           file = "public/auth.md";
           type = "text/markdown; charset=utf-8";
-        } else if (url.startsWith("/.well-known/")) {
+        } else if (WELL_KNOWN_FILES.has(url)) {
           file = `public${url}`;
           type = url === "/.well-known/api-catalog"
             ? "application/linkset+json; charset=utf-8"
