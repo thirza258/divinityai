@@ -496,6 +496,32 @@ describe('App', () => {
     });
   });
 
+  it('renders **bold** markdown as bold text without literal asterisks', async () => {
+    const user = userEvent.setup();
+    mockQuery(() =>
+      Promise.resolve(
+        jsonResponse({
+          answer: '**Evidence:**\n- **[Q 2:153]** – Seek help through patience.',
+          sources: [],
+          citations: ['Q 2:153'],
+          intent: 'quran_verse',
+          safety: {},
+          pipeline_meta: {},
+        })
+      )
+    );
+
+    await renderApp();
+    await user.type(screen.getByPlaceholderText(/Ask about the Quran or Hadith/), 'patience');
+    await user.click(screen.getByRole('button', { name: /Ask/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Evidence:').closest('strong')).not.toBeNull();
+    });
+    expect(screen.getByText('[Q 2:153]').closest('strong')).not.toBeNull();
+    expect(document.body.textContent).not.toContain('**');
+  });
+
   // =========================================================================
   // Loading state tests
   // =========================================================================

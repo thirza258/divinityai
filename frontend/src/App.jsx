@@ -42,7 +42,7 @@ function Bismillah() {
 /* Citation helper                                                     */
 /* ------------------------------------------------------------------ */
 
-function formatMessage(text) {
+function formatCitations(text) {
   const parts = text.split(/(\[Q\s+\d+:\d+\]|\[C\s+[^\]]+\])/g);
   return parts.map((part, i) => {
     if (part.match(/^\[(Q|C)\s/)) {
@@ -57,6 +57,16 @@ function formatMessage(text) {
     }
     return <span key={i}>{part}</span>;
   });
+}
+
+// The model writes **bold** markdown; render it instead of showing asterisks.
+// Odd split indices are the captured bold contents.
+function formatMessage(text) {
+  return text.split(/\*\*([^*\n]+?)\*\*/g).map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i}>{formatCitations(part)}</strong>
+      : <span key={i}>{formatCitations(part)}</span>
+  );
 }
 
 /* ------------------------------------------------------------------ */
